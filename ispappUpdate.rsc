@@ -173,8 +173,7 @@
     \n      }\r\
     \n\r\
     \n  # speedtest\r\
-    \n  
-    
+    \n  :local executeSpeedtest (\$JParseOut->\"executeSpeedtest\");\r\
     \n  :local txAvg 0 ;\r\
     \n  :local rxAvg 0 ;\r\
     \n  :global ipbandswtestserver $topDomain ;\r\
@@ -187,7 +186,7 @@
     \n      :global speedtestRunning;\r\
     \n      :if ( \$speedtestRunning = true) do={\r\
     \n        :error \"speedtest already running\";\r\
-    \n      }\r\
+    \n      }\r\ 
     \n      :set speedtestRunning true;\r\
     \n      :do {\r\
     \n        :local stUrl (\"https://\" . \$topDomain . \":\" . \$topListenerPort . \"/speedtest\?login=\" . \$login . \"&key=\" . \$topKey);\r\
