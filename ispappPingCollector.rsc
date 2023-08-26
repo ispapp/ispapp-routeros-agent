@@ -2,11 +2,8 @@
     \n\r\
     \n:local tempPingJsonString \"\";\r\
     \n:local pingHosts [:toarray \"\"];\r\
-    \n:set (\$pingHosts->0) \"aws-us-east-1-ping.ispapp.co\";\r\
-    \n:set (\$pingHosts->1) \"aws-us-west-1-ping.ispapp.co\";\r\
-    \n:set (\$pingHosts->2) \"aws-eu-west-2-ping.ispapp.co\";\r\
-    \n:set (\$pingHosts->3) \"aws-sa-east-1-ping.ispapp.co\";\r\
-    \n:set (\$pingHosts->4) \"\$topDomain\";\r\
+    \n:global topDomain;\r\
+    \n:set (\$pingHosts->0) \"\$topDomain\";\r\
     \n\r\
     \n:for pc from=0 to=([:len \$pingHosts]-1) step=1 do={\r\
     \n  #:put (\"pinging host \$pc \" . \$pingHosts->\$pc);\r\

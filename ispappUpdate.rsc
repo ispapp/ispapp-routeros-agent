@@ -43,21 +43,36 @@
     \n:global wanIP;\r\
     \n:do {\r\
     \n\r\
-    \n  :local gatewayStatus ([:tostr [/ip route get [:pick [find dst-address=0.0.0.0/0 active=yes] 0] gateway-status]]);\r\
+    \n  :do {\r\
+    \n    :local gatewayStatus ([:tostr [/ip route get [:pick [find dst-address=0.0.0.0/0 active=yes] 0] gateway-status]]);\r\
     \n\r\
-    \n  #:put \"gatewayStatus: \$gatewayStatus\";\r\
+    \n    #:put \"gatewayStatus: \$gatewayStatus\";\r\
     \n\r\
-    \n  # split the gateway status into\r\
-    \n  # IP/NM, reachable status, via, interface\r\
-    \n  :local gwStatusArray [\$Split \$gatewayStatus \" \"];\r\
-    \n  #:put \"\$gwStatusArray\";\r\
+    \n    # split the gateway status into\r\
+    \n    # IP/NM, reachable status, via, interface\r\
+    \n    :local gwStatusArray [\$Split \$gatewayStatus \" \"];\r\
+    \n    #:put \"\$gwStatusArray\";\r\
     \n\r\
-    \n  # get ip address and netmask as IP/Netmask\r\
-    \n  :local tempIpv4String [/ip address get [:pick [/ip address find interface=(\$gwStatusArray->3)] 0] address];\r\
-    \n  # split by /\r\
-    \n  :local wanIpv4Arr [\$Split \$tempIpv4String \"/\"];\r\
-    \n  # set the wan ip\r\
-    \n  :set wanIP (\$wanIpv4Arr->0);\r\
+    \n    # get ip address and netmask as IP/Netmask\r\
+    \n    :local tempIpv4String [/ip address get [:pick [/ip address find interface=(\$gwStatusArray->3)] 0] address];\r\
+    \n    # split by /\r\
+    \n    :local wanIpv4Arr [\$Split \$tempIpv4String \"/\"];\r\
+    \n    # set the wan ip\r\
+    \n    :set wanIP (\$wanIpv4Arr->0);\r\
+    \n  } on-error={\r\
+    \n    :local tmpGateway ([:tostr [/ip route get [:pick [find dst-address=0.0.0.0/0 active=yes]] gateway ] ]);\r\
+    \n    :local getInterfaceName ([:tostr [/ip arp get [:pick [find address=\$tmpGateway]] interface ] ]);\r\
+    \n    :global tmpWanIP;\r\
+    \n    :foreach ipList in=([/ip address find]) do={\r\
+    \n      :local ipAddressInterfaceName ([/ip address get \$ipList interface]);\r\
+    \n      :local ipAddressInterfaceDyanamic ([/ip address get \$ipList dynamic]);\r\
+    \n      :if ( \$ipAddressInterfaceName = \$getInterfaceName && \$ipAddressInterfaceDyanamic = true) do={\r\
+    \n        :local ipAddressNetwork ([/ip address get \$ipList address ]);\r\
+    \n        :set tmpWanIP ([:pick \$ipAddressNetwork 0 [:find \$ipAddressNetwork \"/\"]]);\r\
+    \n      }\r\
+    \n    }\r\
+    \n    :set wanIP (\$tmpWanIP);\r\
+    \n  }\r\
     \n\r\
     \n} on-error={\r\
     \n  :set wanIP \"\";\r\
