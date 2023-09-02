@@ -126,6 +126,9 @@
 :if ([:len [/system script find name=pingCollector]] > 0) do={
     /system script remove [find name="pingCollector"];
 }
+:if ([:len [/system script find name=ispappLastConfigChangeTsMs]] > 0) do={
+    /system script remove [find name="ispappLastConfigChangeTsMs"];
+}
 :delay 1;
 # remove environment variables
 foreach envVarId in=[/system script environment find] do={
