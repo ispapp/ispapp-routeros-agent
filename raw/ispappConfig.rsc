@@ -1,3 +1,4 @@
+# Router Setup Config 
 :local sameScriptRunningCount [:len [/system script job find script=ispappConfig]];
 
 if ($sameScriptRunningCount > 1) do={
