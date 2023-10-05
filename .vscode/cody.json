@@ -1,0 +1,12 @@
+{
+  "commands": {
+    "context": {
+      "prompt": "create 3 testes and make sure it's related to the code functions ",
+      "context": {
+        "codebase": true,
+        "selection": true
+      },
+      "description": "fixed this code using this repo content as syntax context for this language: github.com/kmoz000/routeros-library"
+    }
+  }
+}

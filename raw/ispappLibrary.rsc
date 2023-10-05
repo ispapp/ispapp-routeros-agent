@@ -1,4 +1,59 @@
- ############################### this file contain predefined functions to be used across the agent script ####################################
+############################### this file contain predefined functions to be used across the agent script ####################################
+
+# Converts a mixed array into a JSON string.
+# 
+# Handles arrays, numbers, and strings up to 3 levels deep.
+# Useful for converting RouterOS scripting language arrays into JSON.
+:global toJson do={
+  :local Aarray $1;
+  :local IsArray false;
+  if ([:typeof $Aarray] = "array") do={
+    :set IsArray (([:find $Aarray [:pick $Aarray 0]] = 0) && ([:find $Aarray [:pick $Aarray ([:len $Aarray] - 1)]] = ([:len $Aarray] - 1)));
+  } else={
+     :if ([:typeof $Aarray] = "num") do={
+        :return $Aarray;
+     } else={
+        :return "\"$Aarray\"";
+     }
+  }
+  :local AjsonString "";  
+  if ($IsArray) do={
+    :set AjsonString "[";
+  } else={
+    :set AjsonString "{";
+  }
+  :local idx 0;
+  :foreach Akey,Avalue in=$Aarray do={
+    :if ([:typeof $Avalue] = "array") do={
+        :local AvalueJson [$toJson $Avalue];
+        :set AjsonString "$AjsonString\"$Akey\":$AvalueJson";
+    } else={
+        if ($IsArray) do={
+            :if ([:typeof $Avalue] = "num") do={
+                :set AjsonString "$AjsonString$Avalue";
+            } else={
+                :set AjsonString "$AjsonString\"$Avalue\"";
+            }
+        } else={
+            :if ([:typeof $Avalue] = "num") do={
+                :set AjsonString "$AjsonString\"$Akey\":$Avalue";
+            } else={
+                :set AjsonString "$AjsonString\"$Akey\":\"$Avalue\"";
+            }
+        }
+    }
+    if ($idx < ([:len $Aarray] - 1)) do={
+        :set AjsonString "$AjsonString,";
+    }
+    :set idx ($idx + 1);
+  }
+  if ($IsArray) do={
+    :set AjsonString "$AjsonString]";
+  } else={
+    :set AjsonString "$AjsonString}";
+  }
+  :return $AjsonString;
+}
 
 # @Details: Function to convert to lowercase or uppercase 
 # @Syntax: $strcaseconv <input string>
