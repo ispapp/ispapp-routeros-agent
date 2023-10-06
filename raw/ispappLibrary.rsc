@@ -80,46 +80,83 @@
     :return {upper=$outputupper; lower=$outputlower};
 }
 
-# @Details: Function to convert to lowercase or uppercase 
+# @Details: Function to Diagnose important global variable for agent connection
 # @Syntax: $TopVariablesDiagnose
 # @Example: :put [$TopVariablesDiagnose] or just $TopVariablesDiagnose
 :global TopVariablesDiagnose do={
-  :local refreched do={:return {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login}};
-  :local res {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login};
-  # Check if topListenerPort is not set and assign a default value if not set
-  :if (!any $topListenerPort) do={
-    :set topListenerPort 8550;
-    :set res [$refreched];
-  }
-  # Check if topDomain is not set and assign a default value if not set
-  :if (!any $topDomain) do={
-    :set topDomain "qwer.ispapp.co"
-    :set res [$refreched];
-  }
-  # Check if login is not set and assign a default value as the MikroTik MAC address
-  :if (!any $login) do={
-    :do {
-      :set login ([/interface get [find default-name=wlan1] mac-address]);
+    :local refreched do={:return {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; login=$login}};
+    :local res {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login};
+    # Check if topListenerPort is not set and assign a default value if not set
+    :if (!any $topListenerPort) do={
+      :global topListenerPort 8550;
       :set res [$refreched];
-    } on-error={
+    }
+    # Check if topDomain is not set and assign a default value if not set
+    :if (!any $topDomain) do={
+      :global topDomain "qwer.ispapp.co"
+      :set res [$refreched];
+    }
+    # Check if login is not set and assign a default value as the MikroTik MAC address
+    :if (!any $login) do={
       :do {
-        :set login ([/interface get [find default-name=ether1] mac-address]);
+        :global login ([/interface get [find default-name=wlan1] mac-address]);
         :set res [$refreched];
       } on-error={
         :do {
-          :set login ([/interface get [find default-name=sfp-sfpplus1] mac-address]);
+          :global login ([/interface get [find default-name=ether1] mac-address]);
           :set res [$refreched];
         } on-error={
-          :do {
-            :set login ([/interface get [find default-name=lte1] mac-address]);
-            :set res [$refreched];
-          } on-error={
-            :log info ("No Interface MAC Address found to use as ISPApp login, default-name=wlan1, ether1, sfp-sfpplus1 or lte1 must exist.");
-            :set res [$refreched];
-          }
+            :do {
+                :global login ([/interface get [find default-name=sfp-sfpplus1] mac-address]);
+                :set res [$refreched];
+            } on-error={
+                :do {
+                    :global login ([/interface get [find default-name=lte1] mac-address]);
+                    :set res [$refreched];
+                } on-error={
+                    :log info ("No Interface MAC Address found to use as ISPApp login, default-name=wlan1, ether1, sfp-sfpplus1 or lte1 must exist.");
+                    :set res [$refreched];
+                }
+            }
         }
-      }
     }
+    :set login ([$strcaseconv $login]->"lower");
   }
   :return $res;
+}
+
+# remove all scripts from the system related to ispapp agent
+:global removeIspappScripts do={
+    :local scriptList [/system script find where name~"ispapp.*"]
+    if ([:len [/system script find where name~"ispapp.*"]] > 0) {
+        :foreach scriptId in=$scriptList do={
+            :local scriptName [/system script get $scriptId name];
+            :do {
+                /system script remove $scriptId;
+                :put "found $scriptName.rsc and removed \E2\9C\85";
+                :log info "found $scriptName and removed \E2\9C\85";
+                :delay 500ms;
+            } on-error={
+                :log error "\E2\9D\8C Could not remove script id $scriptId: $scriptName.rsc";
+            }
+        }
+    }
+}
+
+# remove all schedulers from the system related to ispapp agent
+:global removeIspappSchedulers do={
+    :local scriptList [/system scheduler find where name~"ispapp.*"]
+    if ([:len [/system scheduler find where name~"ispapp.*"]] > 0) {
+        :foreach schedulerId in=$schedulerList do={
+            :do {
+                /system scheduler remove $schedulerId;
+                :put "found $schedulerName and removed \E2\9C\85";
+                :log info "found $schedulerName and removed \E2\9C\85";
+                :delay 500ms;
+            } on-error={
+                :local schedulerName [/system scheduler get $schedulerId name];
+                :log error "\E2\9D\8C Could not remove scheduler id $schedulerId: $schedulerName";
+            }
+        }
+    }
 }
