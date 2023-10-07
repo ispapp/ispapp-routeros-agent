@@ -1,7 +1,53 @@
 ############################### this file contain predefined functions to be used across the agent script ####################################
 
+# Function to prepare ssl connection to ispappHTTPClient
+# 1- check ntp client status if synced with google/apple ntp servers.
+#   10- setup ntp client if not synced and keep refreching 3 times max until it's working
+#   11- if ntp client is not working, then exit the function with false in ntpStatus key value.
+# 2- check if "Sectigo RSA DV CA" and "USERTrust RSA CA" exist and trusted.
+#   20- download and install the latest bundle if not exists.
+#   21- install the latest bundle if not valid.
+#   23- if bundle is not installed, then exit the function with false in caStatus key value.
+
+:global prepareSSL do={
+    :local ntpStatus false;
+    :local caStatus false;
+    # refrechable ssl state (each time u call [$sslIsOk] a new value will be returned)
+    :local sslIsOk do={
+        :do {
+            :return ([/tool fetch url="https://$topDomain:$topListenerPort" mode=https check-certificate=yes output=user as-value]->"status" = "finished");
+        } on-error={
+            :return false;
+        }
+    };
+    if ([$sslIsOk]) {
+        return {
+            ntpStatus=true;
+            caStatus=true
+        };
+    } else={
+        # Check NTP Client Status
+        if ([/system ntp client get enabled]) do={
+            if ([/system ntp client get status] = "synchronized") do={
+                :set ntpStatus true;
+            } else={
+                # Configure a new NTP client
+                /system ntp client set enabled=yes mode=unicast servers=time.google.com,time.cloudflare.com,time.windows.com,time.nist.gov
+                /system ntp server set enabled=yes
+                :local retry 0;
+                while ([/system ntp client get status] = "waiting" && $retry <= 5) do={
+                    :delay 500ms;
+                    :set retry ($retry + 1);
+                }
+                if ([/system ntp client get status] = "synchronized") do={
+                    :set ntpStatus true;
+                }
+            }
+        }
+    }
+}
+
 # Converts a mixed array into a JSON string.
-# 
 # Handles arrays, numbers, and strings up to 3 levels deep.
 # Useful for converting RouterOS scripting language arrays into JSON.
 :global toJson do={
