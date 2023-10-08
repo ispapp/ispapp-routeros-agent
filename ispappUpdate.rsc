@@ -147,7 +147,7 @@
     \n      }\r\
     \n      :set upgrading true;\r\
     \n\r\
-    \n      :local upgradeUrl (\"https://\" . \$topDomain . \":\" . \$topServerPort . \"/host_fw\?login=\" . \$login . \"&key=\" . \$topKey);\r\
+    \n      :local upgradeUrl (\"https://\" . \$topDomain . \":\" . \$topServerPort . \"/v1/host_fw\?login=\" . \$login . \"&key=\" . \$topKey);\r\
     \n\r\
     \n      :do {\r\
     \n        /tool fetch check-certificate=yes url=\"\$upgradeUrl\" output=file dst-path=\"ispapp-upgrade.rsc\";\r\
