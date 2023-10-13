@@ -1,5 +1,116 @@
 ############################### this file contain predefined functions to be used across the agent script ####################################
 
+# Function to collect all wireless interfaces and format them to be sent to server.
+# @param $topDomain - domain of the server
+# @param $topKey - key of the server
+# @param $topListenerPort - port of the server
+# @param $login - login of the server
+# @param $password - password of the server
+# @param $prepareSSL - if true, SSL preparation will be done
+# @return $wlans - array of wireless interfaces
+# @return $status - status of the operation
+# @return $message - message of the operation
+:global WirelessInterfacesConfigSync do={
+    # check if SSL preparation is needed
+    :local sslPreparation [$prepareSSL];
+    :local loginIsOk do={
+        # check if login and password are correct
+        :do {
+            :return ([/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value]->"status" = "finished");
+        } on-error={
+            :return false;
+        }
+    };
+    :local getConfig do={
+        :do {
+            :local res [$JSONLoads  ([/tool fetch url="https://$topDomain:$topListenerPort/config?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value]->"data")]
+            :return { "responce"=$res; "status"=true };
+        } on-error={
+            :return {"status"=false; "message"="error while getting config"};
+        }
+    };
+    :local getLocalWlans do={
+        # collect all wireless interfaces from the system
+        # format them to be sent to server
+        :local wlans [/interface/wireless find where disabled=no];
+         if ([:len $wlans] > 0) do={
+            :local wirelessConfigs {};
+            foreach k in=$wlans do={
+                :local temp [/interface/wireless print proplist=ssid,security-profile as-value where .id=$k];
+                :local secTemp [/interface/wireless/security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=($temp->"security-profile")];
+                :local getEncKey do={
+                    if([:len ($1->"wpa-pre-shared-key")] > 0) do={
+                        :return $1->"wpa-pre-shared-key";
+                    } else={
+                        if([:len ($1->"wpa2-pre-shared-key")] > 0) do={
+                            :return $1->"wpa2-pre-shared-key";
+                        } else={
+                            :return "";
+                        }
+                    }
+                }
+                :local thisWirelessConfig {
+                  "encKey"=($secTemp->"");
+                  "encType"=[$getEncKey $secTemp];
+                  "ssid"=($temp->"ssid")
+                };
+                :set wirelessConfigs ($wirelessConfigs+$thisWirelessConfig);
+            }
+            :return { "status"=true; "wirelessConfigs"=$wirelessConfigs };
+         } else={
+            :return { "status"=false; "message"="no wireless interfaces found" };
+         }
+    }
+    if ([$loginIsOk]) do={
+        :local resconfig [$getConfig];
+        :delay 500ms;
+        :local retrying 0;
+        :local configResponce;
+        while ((!any ($configResponce->"Authed")) && $retrying <=5) do={
+            :set configResponce ([$resconfig]->"responce"->"host")
+            :delay 400ms;
+            :set retrying ($retrying + 1);
+        }
+        :local wirelessConfigs ($configResponce->"wirelessConfigs");
+        if ([:len $wirelessConfigs] > 0) do={
+            # example from host: clientIsolation=false;dotw=false;dtimPeriod=0;encKey=oxygen_12034;encType=wpa-psk wpa2-psk;sp=false;ssid=sous sol;vlanId=0
+            # example from local: "{\"if\":\"$wIfName\",\"ssid\":\"$wIfSsid\",\"key\":\"$wIfKey\",\"keytypes\":\"$wIfKeyTypeString\"}"
+            :local localwirelessConfigs [$getLocalWlans];
+            if ([$localwirelessConfigs]->"status" = true) do={
+                ## start comparing local and remote configs
+                
+            } else={
+                ## start importing remote configs
+                
+            }
+            :return {
+                "status"=true;
+                "message"=$wirelessConfigs
+            };
+        } else={
+            :local localwirelessConfigs [$getLocalWlans];
+            if ([$localwirelessConfigs]->"status" = true) do={
+                ## start uploading local configs to host
+
+                :return {
+                    "status"=true;
+                    "message"="no wireless configs found"
+                };
+            } else={
+                :return {
+                    "status"=true;
+                    "message"="no wireless configs found"
+                };
+            }
+        }
+    } else={
+        :return {
+            "status"=false;
+            "message"="login or key is wrong"
+        };
+    }
+};
+
 # Function to prepare ssl connection to ispappHTTPClient
 # 1- check ntp client status if synced with google/apple ntp servers.
 #   10- setup ntp client if not synced and keep refreching 3 times max until it's working
@@ -10,8 +121,8 @@
 #   23- if bundle is not installed, then exit the function with false in caStatus key value.
 
 :global prepareSSL do={
-    :local ntpStatus false;
-    :local caStatus false;
+    :global ntpStatus false;
+    :global caStatus false;
     # refrechable ssl state (each time u call [$sslIsOk] a new value will be returned)
     :local sslIsOk do={
         :do {
@@ -20,10 +131,10 @@
             :return false;
         }
     };
-    if ([$sslIsOk]) {
-        return {
-            ntpStatus=true;
-            caStatus=true
+    if ([$sslIsOk]) do={
+        :return {
+            "ntpStatus"=true;
+            "caStatus"=true
         };
     } else={
         # Check NTP Client Status
@@ -32,8 +143,10 @@
                 :set ntpStatus true;
             } else={
                 # Configure a new NTP client
+                :put "adding ntp servers to /system ntp client \n";
                 /system ntp client set enabled=yes mode=unicast servers=time.google.com,time.cloudflare.com,time.windows.com,time.nist.gov
-                /system ntp server set enabled=yes
+                /system ntp client reset-freq-drift
+                :delay 1s;
                 :local retry 0;
                 while ([/system ntp client get status] = "waiting" && $retry <= 5) do={
                     :delay 500ms;
@@ -44,7 +157,55 @@
                 }
             }
         }
+        :local addCA do={
+        :global latestCerts do={
+            # Download and return parsed CAs.
+            :local data [/tool  fetch http-method=get mode=https url="https://gogetssl-cdn.s3.eu-central-1.amazonaws.com/wiki/SectigoRSADVBundle.txt"  as-value output=user];
+            :local data0 [:pick ($data->"data") 0 ([:find ($data->"data") "-----END CERTIFICATE-----"] + 26)]; 
+            :local data1 [:pick ($data->"data") ([:find ($data->"data") "-----END CERTIFICATE-----"] + 25) 4200];
+            :return { "DV"=$data0; "USERTrust"=$data1 };
+        };
+        # function to add to install downloaded bundle.
+        :local addDv do={
+            :local currentcerts [$latestCerts];
+            :put ("adding DV cert: \n" . ($currentcerts->"DV") . "\n");
+            if (([:len [/file find where name~"ispapp.co_SectigoRSADVBundle"]] = 0)) do={
+            /file add name=ispapp.co_SectigoRSADVBundle.txt contents=($currentcerts->"DV");
+            /certificate import name=ispapp.co_SectigoRSADVBundle file=ispapp.co_SectigoRSADVBundle.txt;
+            } else={
+                /file set [/file find where name=ispapp.co_SectigoRSADVBundle.txt] contents=($currentcerts->"DV");
+                /certificate import name=ispapp.co_SectigoRSADVBundle file=ispapp.co_SectigoRSADVBundle.txt;
+            }
+        };
+        :local addUSER do={
+            :local currentcerts [$latestCerts];
+            :put ("adding USERTrust cert: \n" . ($currentcerts->"USERTrust") . "\n");
+            if ([:len [/file find where name~"ispapp.co_SectigoRSAUSERTrustBundle"]] = 0) do={
+                /file add name=ispapp.co_SectigoRSAUSERTrustBundle.txt contents=($currentcerts->"USERTrust");
+                /certificate import name=ispapp.co_SectigoRSAUSERTrustBundle file=ispapp.co_SectigoRSAUSERTrustBundle.txt;
+            } else={
+                /file set [/file find where name=ispapp.co_SectigoRSADVBundle.txt] contents=($currentcerts->"USERTrust");
+                /certificate import name=ispapp.co_SectigoRSAUSERTrustBundle file=ispapp.co_SectigoRSAUSERTrustBundle.txt;
+            }
+        };
+        :do {
+            [$addDv];
+            [$addUSER];
+        } on-error={
+            [$addUSER];
+        }
+        }
+        :local retries 0;
+        :do { 
+            $addCA;
+            :delay 1s;
+            if (!([:len [/certificate find name~"ispapp.co" trusted=yes ]] = 0)) do={
+                :set caStatus true;
+            }
+            :set retries ($retries + 1);
+        } while (([:len [/certificate find name~"ispapp.co" trusted=yes ]] = 0) && $retries <= 5)
     }
+    :return { "ntpStatus"=$ntpStatus; "caStatus"=$caStatus };
 }
 
 # Converts a mixed array into a JSON string.
@@ -206,3 +367,15 @@
         }
     }
 }
+
+# ------------------- Load JSON from arg --------------------------------
+:global JSONLoads
+if (!any $JSONLoads) do={ :global JSONLoads do={
+    :global JSONIn $1;
+    :global fJParse;
+    :local ret [$fJParse];
+    :set JSONIn;
+    :global Jpos;
+    :global Jdebug; if (!$Jdebug) do={set Jdebug};
+    :return $ret;
+}}
