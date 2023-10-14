@@ -73,15 +73,65 @@
         }
         :local wirelessConfigs ($configResponce->"wirelessConfigs");
         if ([:len $wirelessConfigs] > 0) do={
-            # example from host: clientIsolation=false;dotw=false;dtimPeriod=0;encKey=oxygen_12034;encType=wpa-psk wpa2-psk;sp=false;ssid=sous sol;vlanId=0
-            # example from local: "{\"if\":\"$wIfName\",\"ssid\":\"$wIfSsid\",\"key\":\"$wIfKey\",\"keytypes\":\"$wIfKeyTypeString\"}"
+            # item received example from local: "{\"if\":\"$wIfName\",\"ssid\":\"$wIfSsid\",\"key\":\"$wIfKey\",\"keytypes\":\"$wIfKeyTypeString\"}"
             :local localwirelessConfigs [$getLocalWlans];
-            if ([$localwirelessConfigs]->"status" = true) do={
-                ## start comparing local and remote configs
-                
-            } else={
-                ## start importing remote configs
-                
+            :local getSecProfile do={
+                # input example from host: clientIsolation=false;dotw=false;dtimPeriod=0;encKey=oxygen_12034;encType=wpa-psk wpa2-psk;sp=false;ssid=sous sol;vlanId=0
+                # Get security profile for a wireless configs from server
+                # if does't exist create one
+                # return security profile name
+                # usage: [$getSecProfile $wirelessConfigs] // returns security profile name
+
+                :local secprofile [/interface/wireless/security-profiles/find where wpa-pre-shared-key=($1->"encKey")];
+                if([:len $secprofile] > 0) do={
+                    :return [/interface/wireless/security-profiles/get ($secprofile->0) name];
+                } else={
+                     /interface/wireless/security-profiles/add\
+                        name=("ispapp_" . ($1->"ssid"))\
+                        wpa2-pre-shared-key=($1->"encKey")\
+                        enabled=yes\
+                        wpa-pre-shared-key=($1->"encKey")\
+                        authentication-types=[$formatAuthTypes ($1->"encType")];
+                     :return ("ispapp_" . ($1->"ssid"))
+                }
+            }
+
+            ## start comparing local and remote configs
+            foreach conf in=$wirelessConfigs do={
+                :local existedinterf [/interface/wireless/find where ssid=($conf->"ssid")];
+                if(([:len $existedinterf] = 0)) do={
+                    # add new interface
+                    /interface/wireless/add\
+                        ssid=($conf->"ssid")\
+                        security-profile=[$getSecProfile $conf]\
+                        name=("ispapp_" . [$convertToValidFormat ($conf->"ssid")])\
+                        disabled=no\
+                        mode=station\
+                } else={
+                    if ([:len $existedinterf] > 1) do={
+                        # remove all interfaces except the first one
+                        :foreach k,intfid in=$existedinterf do={
+                            if ($k != 0) do={
+                                /interface/wireless/remove [/interface/wireless/get $intfid name];
+                            }
+                        }
+                        # set the first interface to the new config
+                        /interface/wireless/set [/interface/wireless/get ($existedinterf->0) name]\
+                        ssid=($conf->"ssid")\
+                        security-profile=[$getSecProfile $conf]\
+                        name=("ispapp_" . [$convertToValidFormat ($conf->"ssid")])\
+                        disabled=no\
+                        mode=station\
+                    } else={
+                        # set the first interface to the new config
+                        /interface/wireless/set [/interface/wireless/get ($existedinterf->0) name]\
+                        ssid=($conf->"ssid")\
+                        security-profile=[$getSecProfile $conf]\
+                        name=("ispapp_" . [$convertToValidFormat ($conf->"ssid")])\
+                        disabled=no\
+                        mode=station\
+                    }
+                }
             }
             :return {
                 "status"=true;
@@ -91,7 +141,16 @@
             :local localwirelessConfigs [$getLocalWlans];
             if ([$localwirelessConfigs]->"status" = true) do={
                 ## start uploading local configs to host
-
+                # item sended example from local: "{\"if\":\"$wIfName\",\"ssid\":\"$wIfSsid\",\"key\":\"$wIfKey\",\"keytypes\":\"$wIfKeyTypeString\"}"
+                :local localConfigs;
+                :foreach interfaceid in=[/interface/wireless/find] do={
+                    :set localConfigs ($localConfigs+({
+                        "if"=([/interface/wireless/get $interfaceid name]);
+                        "ssid"=([/interface/wireless/get $interfaceid ssid]);
+                        "key"=([/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa-pre-shared-key]);
+                        "keytypes"=([$joinArray [/interface/wireless/security-profiles/get [/interface/wireless/get $interfaceid security-profile] authentication-types] ","])
+                    }))
+                }
                 :return {
                     "status"=true;
                     "message"="no wireless configs found"
@@ -162,8 +221,7 @@
             # Download and return parsed CAs.
             :local data [/tool  fetch http-method=get mode=https url="https://gogetssl-cdn.s3.eu-central-1.amazonaws.com/wiki/SectigoRSADVBundle.txt"  as-value output=user];
             :local data0 [:pick ($data->"data") 0 ([:find ($data->"data") "-----END CERTIFICATE-----"] + 26)]; 
-            :local data1 [:pick ($data->"data") ([:find ($data->"data") "-----END CERTIFICATE-----"] + 25) 4200];
-            :return { "DV"=$data0; "USERTrust"=$data1 };
+            :return { "DV"=$data0 };
         };
         # function to add to install downloaded bundle.
         :local addDv do={
@@ -177,22 +235,10 @@
                 /certificate import name=ispapp.co_SectigoRSADVBundle file=ispapp.co_SectigoRSADVBundle.txt;
             }
         };
-        :local addUSER do={
-            :local currentcerts [$latestCerts];
-            :put ("adding USERTrust cert: \n" . ($currentcerts->"USERTrust") . "\n");
-            if ([:len [/file find where name~"ispapp.co_SectigoRSAUSERTrustBundle"]] = 0) do={
-                /file add name=ispapp.co_SectigoRSAUSERTrustBundle.txt contents=($currentcerts->"USERTrust");
-                /certificate import name=ispapp.co_SectigoRSAUSERTrustBundle file=ispapp.co_SectigoRSAUSERTrustBundle.txt;
-            } else={
-                /file set [/file find where name=ispapp.co_SectigoRSADVBundle.txt] contents=($currentcerts->"USERTrust");
-                /certificate import name=ispapp.co_SectigoRSAUSERTrustBundle file=ispapp.co_SectigoRSAUSERTrustBundle.txt;
-            }
-        };
         :do {
             [$addDv];
-            [$addUSER];
         } on-error={
-            [$addUSER];
+            :put "error adding DV cert \n";
         }
         }
         :local retries 0;
@@ -379,3 +425,75 @@ if (!any $JSONLoads) do={ :global JSONLoads do={
     :global Jdebug; if (!$Jdebug) do={set Jdebug};
     :return $ret;
 }}
+# Function that takes a string as an input and converts it to the desired format
+# Example usage:
+# :put [$convertToValidFormat "this_is_a_Test! @#?/string"] // returns "this_is_a_Test______string"
+
+:global convertToValidFormat do={
+    :local inputString ($1)
+    :local validCharacters "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+    :local outputString ""
+    
+    :local length [:len $inputString]
+    :local i 0
+    :while ($i < $length) do={
+        :local currentCharacter [:pick $inputString $i]
+        :if ([:typeof [:find $validCharacters $currentCharacter]] = "num") do={
+            :set outputString ($outputString . $currentCharacter)
+        } else={
+            :set outputString ($outputString . "_")
+        }
+        :set i ($i + 1)
+    }
+    :return $outputString;
+}
+
+
+# Function in RouterOS script that formats the authentication types as per the specified rules
+# Example usage:
+# :put [$formatAuthTypes "wpa-psk wpa2-psk wpa3-eap wpa2-eap"]
+:global formatAuthTypes do={
+    :local inputTypes ($1)
+    :local validTypesArr [:toarray "wpa-eap, wpa-psk, wpa2-eap, wpa2-psk"];
+    :local outputTypes ""
+    :local typesArr "";
+    :for i from=0 to=[:len $inputTypes] do={
+        :if ([:pick $inputTypes $i] = " " || [:pick $inputTypes $i] = ";") do={
+            :set typesArr ($typesArr. ", ");
+        } else={
+            :set typesArr ($typesArr. [:pick $inputTypes $i]);
+        }
+    }
+    :set typesArr [:toarray $typesArr];
+    :foreach atype in=$typesArr do={
+        :if ([:typeof [:find $validTypesArr $atype]] = "num") do={
+            :if ($outputTypes = "") do={
+                :set outputTypes $atype;
+            } else={
+                :set outputTypes ($outputTypes . "," . $atype);
+            }
+        }
+    }
+    :return $outputTypes;
+}
+
+# Function to join array elements with a specified delimiter
+# Example usage:
+# :put [$joinArray ["a" "b" "c"] " - "] // returns "a - b - c"
+
+:global joinArray do={
+    :local inputArray ($1)
+    :local delimiter ($2)
+    :local outputString ""
+    if ([:typeof $inputArray] != "array") do={
+        :return [:tostr $inputArray]
+    }
+    :foreach k,i in=$inputArray do={
+        if ($k = 0) do={
+            :set outputString ($outputString .  $i);
+        } else={
+            :set outputString ($outputString . $2 .  $i);
+        }
+    }
+    :return $outputString;
+}
