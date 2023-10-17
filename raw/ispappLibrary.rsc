@@ -197,31 +197,29 @@
         };
     } else={
         # Check NTP Client Status
-        if ([/system ntp client get enabled]) do={
+        if ([/system ntp client get status] = "synchronized") do={
+            :set ntpStatus true;
+        } else={
+            # Configure a new NTP client
+            :put "adding ntp servers to /system ntp client \n";
+            /system ntp client set enabled=yes mode=unicast servers=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com
+            /system/ntp/client/reset-freq-drift 
+            :delay 2s;
+            :set ntpStatus true;
+            :local retry 0;
+            while ([/system ntp client get status] = "waiting" && $retry <= 5) do={
+                :delay 500ms;
+                :set retry ($retry + 1);
+            }
             if ([/system ntp client get status] = "synchronized") do={
                 :set ntpStatus true;
-            } else={
-                # Configure a new NTP client
-                :put "adding ntp servers to /system ntp client \n";
-                /system ntp client set enabled=yes mode=unicast servers=time.google.com,time.cloudflare.com,time.windows.com,time.nist.gov
-                /system ntp client reset-freq-drift
-                :delay 1s;
-                :local retry 0;
-                while ([/system ntp client get status] = "waiting" && $retry <= 5) do={
-                    :delay 500ms;
-                    :set retry ($retry + 1);
-                }
-                if ([/system ntp client get status] = "synchronized") do={
-                    :set ntpStatus true;
-                }
             }
         }
-        :local addCA do={
         :global latestCerts do={
             # Download and return parsed CAs.
             :local data [/tool  fetch http-method=get mode=https url="https://gogetssl-cdn.s3.eu-central-1.amazonaws.com/wiki/SectigoRSADVBundle.txt"  as-value output=user];
             :local data0 [:pick ($data->"data") 0 ([:find ($data->"data") "-----END CERTIFICATE-----"] + 26)]; 
-            :return { "DV"=$data0 };
+            :return { "DV"=$data0 }
         };
         # function to add to install downloaded bundle.
         :local addDv do={
@@ -240,10 +238,9 @@
         } on-error={
             :put "error adding DV cert \n";
         }
-        }
         :local retries 0;
         :do { 
-            $addCA;
+            :local addDVres [$addDv];
             :delay 1s;
             if (!([:len [/certificate find name~"ispapp.co" trusted=yes ]] = 0)) do={
                 :set caStatus true;
