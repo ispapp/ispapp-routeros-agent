@@ -14,6 +14,25 @@ __Converts a mixed array into a JSON string__
 :local mixedArray1 (42, 77, {"kimo":"nice"}); :local jsonString [$arrayToJsonDeep3 $mixedArray];:put ("JSON String: " . $jsonString);
 ```
 
+**$WirelessInterfacesConfigSync Funtion Usage** ([**_code_**](#_WirelessInterfacesConfigSync-funtion-usage))
+__The function consists of several internal functions, including loginIsOk, getConfig, getLocalWlans, getSecProfile, and others, that handle tasks like SSL preparation, checking login credentials, retrieving configurations, and managing wireless interfaces. The function ultimately aims to synchronize local and remote wireless configurations.__
+
+```routeros
+# Function to collect all wireless interfaces and format them to be sent to the server.
+# @param $topDomain - domain of the server
+# @param $topKey - key of the server
+# @param $topListenerPort - port of the server
+# @param $login - login of the server
+# @param $password - password of the server
+# @param $prepareSSL - if true, SSL preparation will be done
+# @return $wlans - array of wireless interfaces
+# @return $status - status of the operation
+# @return $message - message of the operation
+:global WirelessInterfacesConfigSync do={
+    # (..function content..)
+};
+```
+
 **$strcaseconv Funtion Usage** ([**_code_**](#_tojson-funtion-usage))
 __Function to convert to lowercase or uppercase__
 
@@ -48,7 +67,4 @@ $TopVariablesDiagnose;
     - > `🟩 \F0\9F\9F\A9 loading`
 
 - **_todo_**:
-    - **ispappHTTPClient**
-        - > check certificates and ntp server and fix them if certs not valid or ntp client not in sync.
-        - > handle all sort of requests to backend.
-        - > convert responces to value-list format. ready to be used in Router Os SCRIPT.
+    - **do more tests on the interfaces syhnc function**
