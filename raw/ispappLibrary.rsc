@@ -33,26 +33,26 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :local wlans [/interface/wireless find where disabled=no];
+        :local getEncKey do={
+            if ([:len ($1->"wpa-pre-shared-key")] > 0) do={
+                :return ($1->"wpa-pre-shared-key");
+            } else={
+                if ([:len ($1->"wpa2-pre-shared-key")] > 0) do={
+                    :return ($1->"wpa2-pre-shared-key");
+                } else={
+                    :return "";
+                }
+            }
+        }
          if ([:len $wlans] > 0) do={
-            :local wirelessConfigs {};
+            :local wirelessConfigs;
             foreach k in=$wlans do={
                 :local temp [/interface/wireless print proplist=ssid,security-profile as-value where .id=$k];
-                :local secTemp [/interface/wireless/security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=($temp->"security-profile")];
-                :local getEncKey do={
-                    if([:len ($1->"wpa-pre-shared-key")] > 0) do={
-                        :return $1->"wpa-pre-shared-key";
-                    } else={
-                        if([:len ($1->"wpa2-pre-shared-key")] > 0) do={
-                            :return $1->"wpa2-pre-shared-key";
-                        } else={
-                            :return "";
-                        }
-                    }
-                }
+                :local secTemp [/interface/wireless/security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=($temp->0->"security-profile")];
                 :local thisWirelessConfig {
-                  "encKey"=($secTemp->"");
-                  "encType"=[$getEncKey $secTemp];
-                  "ssid"=($temp->"ssid")
+                  "encKey"=[$getEncKey ($secTemp->0)];
+                  "encType"=($secTemp->0->"authentication-types");
+                  "ssid"=($temp->0->"ssid")
                 };
                 :set wirelessConfigs ($wirelessConfigs+$thisWirelessConfig);
             }
@@ -60,7 +60,7 @@
          } else={
             :return { "status"=false; "message"="no wireless interfaces found" };
          }
-    }
+    }; :put [$getLocalWlans]
     if ([$loginIsOk]) do={
         :local resconfig [$getConfig];
         :delay 500ms;
