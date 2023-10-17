@@ -60,7 +60,7 @@
          } else={
             :return { "status"=false; "message"="no wireless interfaces found" };
          }
-    }; :put [$getLocalWlans]
+    };
     if ([$loginIsOk]) do={
         :local resconfig [$getConfig];
         :delay 500ms;
