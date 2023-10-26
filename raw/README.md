@@ -33,6 +33,25 @@ __The function consists of several internal functions, including loginIsOk, getC
 };
 ```
 
+**$WirelessInterfacesConfigSync Funtion Usage** ([**_code_**](#_WirelessInterfacesConfigSync-funtion-usage))
+__The function consists of several internal functions, including loginIsOk, getConfig, getLocalWlans, getSecProfile, and others, that handle tasks like SSL preparation, checking login credentials, retrieving configurations, and managing wireless interfaces. The function ultimately aims to synchronize local and remote wireless configurations.__
+
+```routeros
+# Function to collect all wireless interfaces and format them to be sent to the server.
+# @param $topDomain - domain of the server
+# @param $topKey - key of the server
+# @param $topListenerPort - port of the server
+# @param $login - login of the server
+# @param $password - password of the server
+# @param $prepareSSL - if true, SSL preparation will be done
+# @return $wlans - array of wireless interfaces
+# @return $status - status of the operation
+# @return $message - message of the operation
+:global WirelessInterfacesConfigSync do={
+    # (..function content..)
+};
+```
+
 **$strcaseconv Funtion Usage** ([**_code_**](#_tojson-funtion-usage))
 __Function to convert to lowercase or uppercase__
 
