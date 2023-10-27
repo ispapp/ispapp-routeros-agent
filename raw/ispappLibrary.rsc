@@ -11,16 +11,14 @@
 # @return $status - status of the operation
 # @return $message - message of the operation
 :global WirelessInterfacesConfigSync do={
-    # check if SSL preparation is needed
-    :local sslPreparation [$prepareSSL];
-    if (($sslPreparation->"ntpStatus" = true) && ($sslPreparation->"caStatus" = true)) do={
-        :log info "ssl preparation is completed with success!";
-    }
     :local loginIsOk do={
         # check if login and password are correct
         :do {
-            :return ([/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value]->"status" = "finished");
+            :local res ([/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value]->"status" = "finished");
+            :log info "check if login and password are correct completed with responce: $res";
+            :return $res;
         } on-error={
+            :log info "check if login and password are correct completed with responce: error";
             :return false;
         }
     };
@@ -30,23 +28,26 @@
             :local res { "host"={ "Authed"="false" } };
             :local i 0;
              :while ((($res->"host"->"Authed") != true && (!any[:find [:tostr $res] "Err.Raise"])) || $i > 5 ) do={
-                :set res [$JSONLoads  ([/tool fetch url="https://$topDomain:$topListenerPort/config?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value]->"data")];
+                :set res ([$ispappHTTPClient m="get" a="config"]->"parsed");
                 :set i ($i + 1);
-                :delay 3s;
             }
             if (any [:find [:tostr $res] "Err.Raise"]) do={
                 # check id json received is valid and redy to be used
+                :log error "error while getting config (Err.Raise fJSONLoads)";
                 :return {"status"=false; "message"="error while getting config (Err.Raise fJSONLoads)"};
             } else={
+                :log info "check id json received is valid and redy to be used with responce: $res";
                 :return { "responce"=$res; "status"=true };
             }
         } on-error={
+            :log error "error while getting config (Err.Raise fJSONLoads)";
             :return {"status"=false; "message"="error while getting config"};
         }
     };
     :local getLocalWlans do={
         # collect all wireless interfaces from the system
         # format them to be sent to server
+        :log info "start collect all wireless interfaces from the system ...";
         :local wlans [/interface/wireless find where disabled=no];
         :local getEncKey do={
             if ([:len ($1->"wpa-pre-shared-key")] > 0) do={
@@ -71,8 +72,10 @@
                 };
                 :set wirelessConfigs ($wirelessConfigs+$thisWirelessConfig);
             }
+            :log info "collect all wireless interfaces from the system";
             :return { "status"=true; "wirelessConfigs"=$wirelessConfigs };
          } else={
+            :log info "collect all wireless interfaces from the system: no wireless interfaces found";
             :return { "status"=false; "message"="no wireless interfaces found" };
          }
     };
@@ -80,7 +83,6 @@
         # check if our host is authorized to get configuration
         # and ready to accept interface syncronization
         :local configResponce [$getConfig];
-        :delay 500ms;
         :local retrying 0;
         :local wirelessConfigs ($configResponce->"responce"->"host"->"wirelessConfigs");
         if ([:len $wirelessConfigs] > 0) do={
@@ -90,7 +92,9 @@
             :local currentProfilesAtPassword [:parse "/interface/wireless/security-profiles/print as-value where wpa-pre-shared-key=\$1 name=\$2"];
             :local SyncSecProfile do={
                 # add security profile if not found
-                :local foundSecProfiles [$currentProfilesAtPassword ("ispapp_" . ($1->"ssid"))];
+                :local tempName ("ispapp_" . ($1->"ssid"));
+                :local foundSecProfiles [$currentProfilesAtPassword $tempName];
+                :log info "add security profile if not found: $tempName";
                 :local updateSec  [:parse "/interface wireless security-profiles set \$3 wpa-pre-shared-key=\$1 wpa2-pre-shared-key=\$1 authentication-types=\$2 enabled=yes"];
                 if ([:len $foundSecProfiles] > 0) do={
                     [$updateSec ($1->"encKey") [$formatAuthTypes ($1->"encType")] ($foundSecProfiles->0->".id")];
@@ -103,17 +107,19 @@
                         wpa-pre-shared-key=(\$1->\"encKey\") \\
                         authentication-types=(\$1->\"encTypeFormated\")"];
                     [$addSec ($1 + {"encTypeFormated"=[$formatAuthTypes ($1->"encType")]})];
-                    :return ("ispapp_" . ($1->"ssid"));
+                    :return $tempName;
                 }
             }
 
             ## start comparing local and remote configs
             foreach conf in=$wirelessConfigs do={
+                :log info "## start comparing local and remote configs ##";
                 :local existedinterf [/interface/wireless/find ssid=($conf->"ssid")];
-                if(([:len $existedinterf] = 0)) do={
+                if ([:len $existedinterf] = 0) do={
                     # add new interface
                     :local newSecProfile [$SyncSecProfile $conf];
                     :local NewInterName ("ispapp_" . [$convertToValidFormat ($conf->"ssid")]);
+                    :log info "## add new interface -> $NewInterName ##";
                     :local addInter [:parse "/interface/wireless/add \\
                         ssid=(\$1->\"ssid\") \\
                         wireless-protocol=802.11 frequency=auto mode=ap-bridge hide-ssid=no comment=ispapp \\
@@ -122,6 +128,7 @@
                         disabled=no;"];
                     [$addInter ($conf + {"newSecProfile"=$newSecProfile; "NewInterName"=$NewInterName})];
                     :delay 3s; # wait for interface to be created
+                    :log info "## wait for interface to be created 3s ##";
                 } else={
                     :local setInter [:parse "/interface/wireless/set \$2 \\
                         ssid=(\$1->\"ssid\") \\
@@ -132,8 +139,10 @@
                     # set the first interface to the new config
                     :local newSecProfile [$SyncSecProfile $conf];
                     :local NewInterName ("ispapp_" . [$convertToValidFormat ($conf->"ssid")]);
+                    :log info "## update new interface -> $NewInterName ##";
                     [$setInter ($conf + {"newSecProfile"=$newSecProfile; "NewInterName"=$NewInterName}) ($existedinterf->0)];
                     :delay 3s; # wait for interface to be setted
+                    :log info "## wait for interface to be created 3s ##";
                     if ([:len $existedinterf] > 1) do={
                         # remove all interfaces except the first one
                         :foreach k,intfid in=$existedinterf do={
@@ -157,7 +166,8 @@
             if ([$localwirelessConfigs]->"status" = true) do={
                 ## start uploading local configs to host
                 # item sended example from local: "{\"if\":\"$wIfName\",\"ssid\":\"$wIfSsid\",\"key\":\"$wIfKey\",\"keytypes\":\"$wIfKeyTypeString\"}"
-                :delay 30s; # wait for interfaces changes to be applied and can be retrieved from the device
+                :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
+                :log info "## wait for interfaces changes to be applied and can be retrieved from the device 5s ##";
                 :local localConfigs;
                 :local i 0;
                 :foreach interfaceid in=[/interface/wireless/find] do={
@@ -440,8 +450,7 @@
 # Function to simplify fJParse usage;
 # usage:
 #   :put [$JSONLoads "{\"hello\":\"world\"}"];
-:global JSONLoads
-if (!any $JSONLoads) do={ :global JSONLoads do={
+:global JSONLoads do={
     :global JSONIn $1;
     :global fJParse;
     :local ret [$fJParse];
@@ -449,7 +458,7 @@ if (!any $JSONLoads) do={ :global JSONLoads do={
     :global Jpos;
     :global Jdebug; if (!$Jdebug) do={set Jdebug};
     :return $ret;
-}}
+}
 
 # Function that takes a string as an input and converts it to the desired format
 # Example usage:
@@ -539,6 +548,7 @@ if (!any $JSONLoads) do={ :global JSONLoads do={
     # check if method argument is provided
     if (($sslPreparation->"ntpStatus" = true) && ($sslPreparation->"caStatus" = true)) do={
         :set certCheck "yes";
+        :log info "ssl preparation is completed with success!";
     }
     if (!any $m) do={
         :local method "get";
@@ -564,15 +574,13 @@ if (!any $JSONLoads) do={ :global JSONLoads do={
     # Check certificates
     # Make request
     :local out;
-    :put $certCheck;
     if (!any $b) do={
         :set out [/tool fetch url=$requestUrl check-certificate=$certCheck http-method=$m output=user as-value];
     } else={
         :set out [/tool fetch url=$requestUrl check-certificate=$certCheck http-method=$m http-data=$b output=user as-value];
     }
     if ($out->"status" = "finished") do={
-        :local parsed [$JSONLoads ($out->"data")];
-        :return { "status"=true; "response"=($out->"data"); "parsed"=$parsed };
+        :return { "status"=true; "response"=($out->"data"); "parsed"=[$JSONLoads ($out->"data")] };
     } else={
         :return { "status"=false; "reason"=($out->"status") };
     }
