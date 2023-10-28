@@ -11,17 +11,6 @@
 # @return $status - status of the operation
 # @return $message - message of the operation
 :global WirelessInterfacesConfigSync do={
-    :local loginIsOk do={
-        # check if login and password are correct
-        :do {
-            :local res ([/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value]->"status" = "finished");
-            :log info "check if login and password are correct completed with responce: $res";
-            :return $res;
-        } on-error={
-            :log info "check if login and password are correct completed with responce: error";
-            :return false;
-        }
-    };
     :local getConfig do={
         # get configuration from the server
         :do {
@@ -583,5 +572,73 @@
         :return { "status"=true; "response"=($out->"data"); "parsed"=[$JSONLoads ($out->"data")] };
     } else={
         :return { "status"=false; "reason"=($out->"status") };
+    }
+}
+
+# Function to check if credentials are ok
+:global loginIsOk do={
+    # check if login and password are correct
+    if (!any $loginIsOkLastCheck) do={
+        $loginIsOkLastCheck [/system clock print as-value];
+    }
+    :do {
+        :local res ([/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value]->"status" = "finished");
+        :log info "check if login and password are correct completed with responce: $res";
+        :return $res;
+    } on-error={
+        :log info "check if login and password are correct completed with responce: error";
+        :return false;
+    }
+};
+
+# Function to get timestamp in seconds, minutes, hours, or days
+# save it in a global variable to get diff between it and the current timestamp.
+:global getTimestamp do={
+    :local format $1;
+    :local out;
+    :local time2parse [:timestamp]
+    :local w [:find $time2parse "w"]
+    :local d [:find $time2parse "d"]
+    :local c [:find $time2parse ":"]
+    :local p [:find $time2parse "."]
+    :local weeks [:pick $time2parse 0 [$w]]
+    :set $weeks ($weeks * 604800) 
+    :local days [:pick $time2parse ($w + 1) $d]
+    :set days ($days * 86400)
+    :local hours [:pick $time2parse ($d + 1) $c]
+    :set hours ($hours * 3600)
+    :local minutes [:pick $time2parse ($c + 1) [:find $time2parse ($c + 3)]]
+    :set minutes ($minutes * 60)
+    :local seconds [:pick $time2parse ($c + 4) $p]
+    :local rawtime ($weeks+$days+$hours+$minutes+$seconds)
+    if (!any $lastTimestamp) do={
+        :global lastTimestamp $rawtime;
+    }
+    :if ($format = "s") do={
+      :set out { "current"=$rawtime; "diff"=($rawtime - $lastTimestamp);}
+      :global lastTimestamp $rawtime;
+      :return $out;
+    } else={
+      :if ($format = "m") do={
+           :set out { "current"=$rawtime; "diff"=(($rawtime - $lastTimestamp)/60) }
+           :global lastTimestamp $rawtime;
+           :return $out;
+      } else={
+        :if ($format = "h") do={
+           :set out { "current"=$rawtime; "diff"=(($rawtime - $lastTimestamp)/3600) }
+           :global lastTimestamp $rawtime;
+           :return $out;
+        } else={
+          :if ($format = "d") do={
+               :set out { "current"=$rawtime; "diff"=(($rawtime - $lastTimestamp)/86400) }
+               :global lastTimestamp $rawtime;
+               :return $out;
+          } else={
+              :set out { "current"=$rawtime; "diff"=($rawtime - $lastTimestamp) }
+              :global lastTimestamp $rawtime;
+              :return $out;
+          }
+        }
+      }
     }
 }
