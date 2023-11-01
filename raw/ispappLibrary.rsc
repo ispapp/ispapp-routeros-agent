@@ -37,7 +37,7 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :log info "start collect all wireless interfaces from the system ...";
-        :local wlans [/interface/wireless find where disabled=no];
+        :local wlans [/interface/wireless find];
         :local getEncKey do={
             if ([:len ($1->"wpa-pre-shared-key")] > 0) do={
                 :return ($1->"wpa-pre-shared-key");
@@ -59,7 +59,7 @@
                   "encType"=($secTemp->0->"authentication-types");
                   "ssid"=($temp->0->"ssid")
                 };
-                :set wirelessConfigs ($wirelessConfigs+$thisWirelessConfig);
+                :set wirelessConfigs ({$wirelessConfigs;$thisWirelessConfig});
             }
             :log info "collect all wireless interfaces from the system";
             :return { "status"=true; "wirelessConfigs"=$wirelessConfigs };
