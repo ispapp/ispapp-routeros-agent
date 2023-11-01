@@ -1,4 +1,4 @@
-############################### this file contain predefined functions to be used across the agent script ####################################
+############################### this file contain predefined functions to be used across the agent script ################################
 
 # Function to collect all wireless interfaces and format them to be sent to server.
 # @param $topDomain - domain of the server
@@ -569,30 +569,47 @@
         :set out [/tool fetch url=$requestUrl check-certificate=$certCheck http-method=$m http-data=$b output=user as-value];
     }
     if ($out->"status" = "finished") do={
-        :return { "status"=true; "response"=($out->"data"); "parsed"=[$JSONLoads ($out->"data")] };
+        :local parses [$JSONLoads ($out->"data")];
+        :return { "status"=true; "response"=($out->"data"); "parsed"=$parses };
     } else={
         :return { "status"=false; "reason"=($out->"status") };
     }
 }
 
 # Function to check if credentials are ok
+# get last login state and save it for avoiding server loading 
+# syntax:
+#       :put [$loginIsOk] \\ result: true/false
 :global loginIsOk do={
     # check if login and password are correct
     if (!any $loginIsOkLastCheck) do={
-        $loginIsOkLastCheck [/system clock print as-value];
+        :global loginIsOkLastCheck ([$getTimestamp]->"current");
+    } else={
+        :local difft ([$getTimestamp s $loginIsOkLastCheck]->"diff") ;
+        if ($difft < -30) do={
+            :return $loginIsOkLastCheckvalue;
+        } 
+    }
+    if (!any $loginIsOkLastCheckvalue) do={
+        :global loginIsOkLastCheckvalue true;
     }
     :do {
-        :local res ([/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value]->"status" = "finished");
-        :log info "check if login and password are correct completed with responce: $res";
-        :return $res;
+        :set loginIsOkLastCheck ([$getTimestamp]->"current");
+        :local res [/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value];
+        :set loginIsOkLastCheckvalue ($res->"status" = "finished");
+        :log info "check if login and password are correct completed with responce: $loginIsOkLastCheckvalue";
+        :return $loginIsOkLastCheckvalue;
     } on-error={
         :log info "check if login and password are correct completed with responce: error";
-        :return false;
+        :set loginIsOkLastCheckvalue false;
+        :return $loginIsOkLastCheckvalue;
     }
 };
 
 # Function to get timestamp in seconds, minutes, hours, or days
 # save it in a global variable to get diff between it and the current timestamp.
+# synctax:
+#       :put [$getTimestamp <s|m|d|h> <your saved timestamp variable to get diff>]
 :global getTimestamp do={
     :local format $1;
     :local out;
@@ -602,39 +619,48 @@
     :local c [:find $time2parse ":"]
     :local p [:find $time2parse "."]
     :local weeks [:pick $time2parse 0 [$w]]
-    :set $weeks ($weeks * 604800) 
+    :set $weeks [:tonum ($weeks * 604800)]
     :local days [:pick $time2parse ($w + 1) $d]
-    :set days ($days * 86400)
+    :set days [:tonum ($days * 86400)]
     :local hours [:pick $time2parse ($d + 1) $c]
-    :set hours ($hours * 3600)
+    :set hours [:tonum ($hours * 3600)]
     :local minutes [:pick $time2parse ($c + 1) [:find $time2parse ($c + 3)]]
-    :set minutes ($minutes * 60)
+    :set minutes [:tonum ($minutes * 60)]
     :local seconds [:pick $time2parse ($c + 4) $p]
     :local rawtime ($weeks+$days+$hours+$minutes+$seconds)
+    :local current ($weeks+$days+$hours+$minutes+$seconds)
     if (!any $lastTimestamp) do={
         :global lastTimestamp $rawtime;
     }
+    if ([:typeof $2] = "num") do={
+        :set lastTimestamp $2;
+    }
     :if ($format = "s") do={
-      :set out { "current"=$rawtime; "diff"=($rawtime - $lastTimestamp);}
+      :local diff ($rawtime - $lastTimestamp);
+      :set out { "current"=$current; "diff"=$diff;}
       :global lastTimestamp $rawtime;
       :return $out;
     } else={
       :if ($format = "m") do={
-           :set out { "current"=$rawtime; "diff"=(($rawtime - $lastTimestamp)/60) }
+           :local diff (($rawtime - $lastTimestamp)/60);
+           :set out { "current"=$current; "diff"=$diff }
            :global lastTimestamp $rawtime;
            :return $out;
       } else={
         :if ($format = "h") do={
-           :set out { "current"=$rawtime; "diff"=(($rawtime - $lastTimestamp)/3600) }
+           :local diff (($rawtime - $lastTimestamp)/3600);
+           :set out { "current"=$current; "diff"=$diff }
            :global lastTimestamp $rawtime;
            :return $out;
         } else={
           :if ($format = "d") do={
-               :set out { "current"=$rawtime; "diff"=(($rawtime - $lastTimestamp)/86400) }
+               :local diff (($rawtime - $lastTimestamp)/86400);
+               :set out { "current"=$current; "diff"=$diff }
                :global lastTimestamp $rawtime;
                :return $out;
           } else={
-              :set out { "current"=$rawtime; "diff"=($rawtime - $lastTimestamp) }
+              :local diff ($rawtime - $lastTimestamp);
+              :set out { "current"=$current; "diff"=$diff }
               :global lastTimestamp $rawtime;
               :return $out;
           }
