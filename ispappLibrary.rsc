@@ -1,4 +1,4 @@
-# 2023-11-02 23:02:00
+# 2023-11-02 23:37:37
 /system script
 add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
@@ -168,6 +168,8 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n                    :local newSecProfile [\$SyncSecProfile \$conf];\r\
     \n                    :local NewInterName (\"ispapp_\" . [\$convertToValid\
     Format (\$conf->\"ssid\")]);\r\
+    \n                    :local masterinterface [/interface/wireless/get ([/i\
+    nterface/wireless/find]->0) name];\r\
     \n                    :log info \"## add new interface -> \$NewInterName #\
     #\";\r\
     \n                    :local addInter [:parse \"/interface/wireless/add \\\
@@ -177,6 +179,7 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     bridge hide-ssid=no comment=ispapp \\\\\r\
     \n                        security-profile=(\\\$1->\\\"newSecProfile\\\") \
     \\\\\r\
+    \n                        master-interface=\\\$masterinterface \\\\\r\
     \n                        name=(\\\$1->\\\"NewInterName\\\") \\\\\r\
     \n                        disabled=no;\"];\r\
     \n                    [\$addInter (\$conf + {\"newSecProfile\"=\$newSecPro\
@@ -802,132 +805,4 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n        :return \$loginIsOkLastCheckvalue;\r\
     \n    }\r\
     \n};\r\
-    \n"
-add dont-require-permissions=no name=ispappLibraryV2 owner=admin policy=\
-    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="\
-    \r\
-    \n# Function to get timestamp in seconds, minutes, hours, or days\r\
-    \n# save it in a global variable to get diff between it and the current ti\
-    mestamp.\r\
-    \n# synctax:\r\
-    \n#       :put [\$getTimestamp <s|m|d|h> <your saved timestamp variable to\
-    \_get diff>]\r\
-    \n:global getTimestamp do={\r\
-    \n    :local format \$1;\r\
-    \n    :local out;\r\
-    \n    :local time2parse [:timestamp]\r\
-    \n    :local w [:find \$time2parse \"w\"]\r\
-    \n    :local d [:find \$time2parse \"d\"]\r\
-    \n    :local c [:find \$time2parse \":\"]\r\
-    \n    :local p [:find \$time2parse \".\"]\r\
-    \n    :local weeks [:pick \$time2parse 0 [\$w]]\r\
-    \n    :set \$weeks [:tonum (\$weeks * 604800)]\r\
-    \n    :local days [:pick \$time2parse (\$w + 1) \$d]\r\
-    \n    :set days [:tonum (\$days * 86400)]\r\
-    \n    :local hours [:pick \$time2parse (\$d + 1) \$c]\r\
-    \n    :set hours [:tonum (\$hours * 3600)]\r\
-    \n    :local minutes [:pick \$time2parse (\$c + 1) [:find \$time2parse (\$\
-    c + 3)]]\r\
-    \n    :set minutes [:tonum (\$minutes * 60)]\r\
-    \n    :local seconds [:pick \$time2parse (\$c + 4) \$p]\r\
-    \n    :local rawtime (\$weeks+\$days+\$hours+\$minutes+\$seconds)\r\
-    \n    :local current (\$weeks+\$days+\$hours+\$minutes+\$seconds)\r\
-    \n    if (!any \$lastTimestamp) do={\r\
-    \n        :global lastTimestamp \$rawtime;\r\
-    \n    }\r\
-    \n    if ([:typeof \$2] = \"num\") do={\r\
-    \n        :set lastTimestamp \$2;\r\
-    \n    }\r\
-    \n    :if (\$format = \"s\") do={\r\
-    \n      :local diff (\$rawtime - \$lastTimestamp);\r\
-    \n      :set out { \"current\"=\$current; \"diff\"=\$diff;}\r\
-    \n      :global lastTimestamp \$rawtime;\r\
-    \n      :return \$out;\r\
-    \n    } else={\r\
-    \n      :if (\$format = \"m\") do={\r\
-    \n           :local diff ((\$rawtime - \$lastTimestamp)/60);\r\
-    \n           :set out { \"current\"=\$current; \"diff\"=\$diff }\r\
-    \n           :global lastTimestamp \$rawtime;\r\
-    \n           :return \$out;\r\
-    \n      } else={\r\
-    \n        :if (\$format = \"h\") do={\r\
-    \n           :local diff ((\$rawtime - \$lastTimestamp)/3600);\r\
-    \n           :set out { \"current\"=\$current; \"diff\"=\$diff }\r\
-    \n           :global lastTimestamp \$rawtime;\r\
-    \n           :return \$out;\r\
-    \n        } else={\r\
-    \n          :if (\$format = \"d\") do={\r\
-    \n               :local diff ((\$rawtime - \$lastTimestamp)/86400);\r\
-    \n               :set out { \"current\"=\$current; \"diff\"=\$diff }\r\
-    \n               :global lastTimestamp \$rawtime;\r\
-    \n               :return \$out;\r\
-    \n          } else={\r\
-    \n              :local diff (\$rawtime - \$lastTimestamp);\r\
-    \n              :set out { \"current\"=\$current; \"diff\"=\$diff }\r\
-    \n              :global lastTimestamp \$rawtime;\r\
-    \n              :return \$out;\r\
-    \n          }\r\
-    \n        }\r\
-    \n      }\r\
-    \n    }\r\
-    \n}\r\
-    \n# Function to collect all information needed yo be sent to config endpoi\
-    nt\r\
-    \n# usage: \r\
-    \n#   :put [\$getAllConfigs <interfacesinfos array>] \r\
-    \n# result will be in this format:\r\
-    \n#      (\"{\"clientInfo\":\"\$topClientInfo\", \"osVersion\":\"\$osversi\
-    on\", \"hardwareMake\":\"\$hardwaremake\",\r\
-    \n#     \"hardwareModel\":\"\$hardwaremodel\",\"hardwareCpuInfo\":\"\$cpu\
-    \",\"os\":\"\$os\",\"osBuildDate\":\$osbuilddate\r\
-    \n#     ,\"fw\":\"\$topClientInfo\",\"hostname\":\"\$hostname\",\"interfac\
-    es\":[\$ifaceDataArray],\"wirelessConfigured\":[\$wapArray],\r\
-    \n#     \"webshellSupport\":true,\"bandwidthTestSupport\":true,\"firmwareU\
-    pgradeSupport\":true,\"wirelessSupport\":true}\");\r\
-    \n\r\
-    \n:global getAllConfigs do={\r\
-    \n    :do {\r\
-    \n        :local buildTime [/system resource get build-time];\r\
-    \n        :local osbuilddate [\$rosTimestringSec \$buildTime];\r\
-    \n        :local interfaces;\r\
-    \n        foreach k,v in=[/interface/find] do={\r\
-    \n            :local Name [/interface get \$v name];\r\
-    \n            :local Mac [/interface get \$v mac-address];\r\
-    \n            :local DefaultName [:parse \"/interface get \\\$1 default-na\
-    me\"];\r\
-    \n            :set (\$interfaces->\$k) {\r\
-    \n                \"if\"=\$Name;\r\
-    \n                \"mac\"=\$Mac;\r\
-    \n                \"defaultIf\"=[\$DefaultName \$v]\r\
-    \n            };\r\
-    \n        }\r\
-    \n        :set osbuilddate [:tostr \$osbuilddate];\r\
-    \n        :local data {\r\
-    \n            \"clientInfo\"=\$topClientInfo;\r\
-    \n            \"osVersion\"=[/system resource get version];\r\
-    \n            \"hardwareMake\"=[/system resource get platform];\r\
-    \n            \"hardwareModel\"=[/system resource get board-name];\r\
-    \n            \"hardwareCpuInfo\"=[/system resource get cpu];\r\
-    \n            \"osBuildDate\"=[\$rosTimestringSec [/system resource get bu\
-    ild-time]];\r\
-    \n            \"fw\"=\$topClientInfo;\r\
-    \n            \"interfaces\"=\$interfaces;\r\
-    \n            \"hostname\"=[/system identity get name];\r\
-    \n            \"os\"=[/system package get 0 name];\r\
-    \n            \"wirelessConfigured\"=\$1;\r\
-    \n            \"webshellSupport\"=true;\r\
-    \n            \"firmwareUpgradeSupport\"=true;\r\
-    \n            \"wirelessSupport\"=true;\r\
-    \n            \"bandwidthTestSupport\"=true\r\
-    \n        };\r\
-    \n        :local json [\$toJson \$data];\r\
-    \n        :log info \"Configs body json created with success (getAllConfig\
-    sFigs function -> true).\";\r\
-    \n        :return {\"status\"=true; \"json\"=\$json};\r\
-    \n    } on-error={\r\
-    \n        :log error \"faild to build config json object!\";\r\
-    \n        :return {\"status\"=false; \"reason\"=\"faild to build config js\
-    on object!\"};\r\
-    \n    }\r\
-    \n}\r\
     \n"
