@@ -123,11 +123,13 @@
                     # add new interface
                     :local newSecProfile [$SyncSecProfile $conf];
                     :local NewInterName ("ispapp_" . [$convertToValidFormat ($conf->"ssid")]);
+                    :local masterinterface [/interface/wireless/get ([/interface/wireless/find]->0) name];
                     :log info "## add new interface -> $NewInterName ##";
                     :local addInter [:parse "/interface/wireless/add \\
                         ssid=(\$1->\"ssid\") \\
                         wireless-protocol=802.11 frequency=auto mode=ap-bridge hide-ssid=no comment=ispapp \\
                         security-profile=(\$1->\"newSecProfile\") \\
+                        master-interface=\$masterinterface \\
                         name=(\$1->\"NewInterName\") \\
                         disabled=no;"];
                     [$addInter ($conf + {"newSecProfile"=$newSecProfile; "NewInterName"=$NewInterName})];
