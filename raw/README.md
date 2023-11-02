@@ -10,7 +10,7 @@ __Converts a mixed array into a JSON string__
         "music"={"rock"=2; "pop"}
         }; 
     "letters"=("tick", {"nice"="me"; "hsi"=0})
-}; :local jsonString [$toJson $mixedArray];:put ("JSON String: " . $jsonString);
+}; :local jsonString [$toJson $mixedArray];:put $jsonString;
 ```
 
 **$WirelessInterfacesConfigSync Funtion Usage** ([**_code_**](#_WirelessInterfacesConfigSync-funtion-usage))

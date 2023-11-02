@@ -69,35 +69,49 @@
             :return { "status"=false; "message"="no wireless interfaces found" };
          }
     };
+    
     if ([$loginIsOk]) do={
         # check if our host is authorized to get configuration
         # and ready to accept interface syncronization
         :local configResponce [$getConfig];
         :local retrying 0;
         :local wirelessConfigs ($configResponce->"responce"->"host"->"wirelessConfigs");
+        :local localwirelessConfigs [$getLocalWlans];
+        :local output;
         if ([:len $wirelessConfigs] > 0) do={
             # this is the case when some interface configs received from the host
-            :local localwirelessConfigs [$getLocalWlans];
             # get security profile with same password as the one on first argument $1
-            :local currentProfilesAtPassword [:parse "/interface/wireless/security-profiles/print as-value where wpa-pre-shared-key=\$1 name=\$2"];
+            
             :local SyncSecProfile do={
                 # add security profile if not found
-                :local tempName ("ispapp_" . ($1->"ssid"));
-                :local foundSecProfiles [$currentProfilesAtPassword $tempName];
-                :log info "add security profile if not found: $tempName";
-                :local updateSec  [:parse "/interface wireless security-profiles set \$3 wpa-pre-shared-key=\$1 wpa2-pre-shared-key=\$1 authentication-types=\$2 enabled=yes"];
-                if ([:len $foundSecProfiles] > 0) do={
-                    [$updateSec ($1->"encKey") [$formatAuthTypes ($1->"encType")] ($foundSecProfiles->0->".id")];
-                    :return ($foundSecProfiles->"name");
-                } else={
-                     :local addSec  [:parse ":put [\$formatAuthTypes (\$1->\"encType\")]; /interface wireless security-profiles add \\
-                        mode=dynamic-keys \\
-                        name=(\"ispapp_\" . (\$1->\"ssid\")) \\
-                        wpa2-pre-shared-key=(\$1->\"encKey\") \\
-                        wpa-pre-shared-key=(\$1->\"encKey\") \\
-                        authentication-types=(\$1->\"encTypeFormated\")"];
-                    [$addSec ($1 + {"encTypeFormated"=[$formatAuthTypes ($1->"encType")]})];
-                    :return $tempName;
+                :do {
+                    :local tempName ("ispapp_" . ($1->"ssid"));
+                    :local currentProfilesAtPassword [:parse "/interface/wireless/security-profiles/print as-value where wpa-pre-shared-key=\$1"];
+                    :local foundSecProfiles [$currentProfilesAtPassword $tempName];
+                    :log info "add security profile if not found: $tempName";
+                    :local updateSec  [:parse "/interface wireless security-profiles set \$3 \\
+                        wpa-pre-shared-key=\$1 \\
+                        wpa2-pre-shared-key=\$1 \\
+                        authentication-types=\$2"];
+                    if ([:len $foundSecProfiles] > 0) do={
+                        :local thisencTypeFormated [$formatAuthTypes ($1->"encType")];
+                        :local thisfoundSecProfiles ($foundSecProfiles->0->".id");
+                        [$updateSec ($1->"encKey") $thisencTypeFormated $thisfoundSecProfiles];
+                        :return ($foundSecProfiles->0->"name");
+                    } else={
+                         :local addSec  [:parse "/interface wireless security-profiles add \\
+                            mode=dynamic-keys \\
+                            name=(\"ispapp_\" . (\$1->\"ssid\")) \\
+                            wpa2-pre-shared-key=(\$1->\"encKey\") \\
+                            wpa-pre-shared-key=(\$1->\"encKey\") \\
+                            authentication-types=(\$1->\"encTypeFormated\")"];
+                        [$addSec ($1 + {"encTypeFormated"=[$formatAuthTypes ($1->"encType")]})];
+                        :return $tempName;
+                    }
+                } on-error={
+                    # return the default dec profile in case of error
+                    # adding or updating to perform interface setup with no problems
+                    :return [/interface/wireless/security-profiles/get *0 name];
                 }
             }
 
@@ -146,42 +160,43 @@
             }
             :local message ("syncronization of " . [:len $wirelessConfigs] . " interfaces completed");
             :log info $message;
-            :return {
+            :set output {
                 "status"=true;
-                "message"=$message;
+                "message0"=$message;
                 "configs"=$wirelessConfigs
             };
+        }
+        if ([$localwirelessConfigs]->"status" = true) do={
+            ## start uploading local configs to host
+            # item sended example from local: "{\"if\":\"$wIfName\",\"ssid\":\"$wIfSsid\",\"key\":\"$wIfKey\",\"keytypes\":\"$wIfKeyTypeString\"}"
+            :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
+            :log info "## wait for interfaces changes to be applied and can be retrieved from the device 5s ##";
+            :local InterfaceslocalConfigs;
+            :local getkeytypes  [:parse "/interface/wireless/security-profiles/get [/interface/wireless/get \$1 security-profile] authentication-types"];
+            :foreach k,interfaceid in=[/interface/wireless/find] do={
+                :set ($InterfaceslocalConfigs->$k) {
+                    "if"=([/interface/wireless/get $interfaceid name]);
+                    "ssid"=([/interface/wireless/get $interfaceid ssid]);
+                    "key"=([/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa-pre-shared-key]);
+                    "keytypes"=([$joinArray [$getkeytypes $interfaceid] ","])
+                };
+            };
+            :local sentbody "{}";
+            :local message ("uploading " . [:len $InterfaceslocalConfigs] . " interfaces to ispapp server");
+            :set sentbody ([$getAllConfigs $InterfaceslocalConfigs]->"json");
+            :local returned  [$ispappHTTPClient m=post a=config b=$sentbody];
+            :return ($output+{
+                "status"=true;
+                "body"=$sentbody;
+                "responce"=$returned;
+                "message1"=$message
+            });
         } else={
-            :local localwirelessConfigs [$getLocalWlans];
-            if ([$localwirelessConfigs]->"status" = true) do={
-                ## start uploading local configs to host
-                # item sended example from local: "{\"if\":\"$wIfName\",\"ssid\":\"$wIfSsid\",\"key\":\"$wIfKey\",\"keytypes\":\"$wIfKeyTypeString\"}"
-                :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
-                :log info "## wait for interfaces changes to be applied and can be retrieved from the device 5s ##";
-                :local localConfigs;
-                :local i 0;
-                :foreach interfaceid in=[/interface/wireless/find] do={
-                    :set ($localConfigs->$i) {
-                        "if"=([/interface/wireless/get $interfaceid name]);
-                        "ssid"=([/interface/wireless/get $interfaceid ssid]);
-                        "key"=([/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa-pre-shared-key]);
-                        "keytypes"=([$joinArray [/interface/wireless/security-profiles/get [/interface/wireless/get $interfaceid security-profile] authentication-types] ","])
-                    };
-                    :set i ($i + 1);
-                };
-                :local message ("uploading " . [:len $localConfigs] . " interfaces to ispapp server");
-                :return {
-                    "status"=true;
-                    "body"=$localConfigs;
-                    "message"=$message
-                };
-            } else={
-                :log info "no local wireless interfaces found (from WirelessInterfacesConfigSync function in ispLibrary.rsc)";
-                :return {
-                    "status"=true;
-                    "message"="no wireless interfaces found"
-                };
-            }
+            :log info "no local wireless interfaces found (from WirelessInterfacesConfigSync function in ispLibrary.rsc)";
+            :return ($output+{
+                "status"=true;
+                "message1"="no wireless interfaces found"
+            });
         }
     } else={
         :log error "login or key is wrong or ispapp server is down or ispapp server is not reachable check WirelessInterfacesConfigSync function in ispLibrary.rsc";
@@ -310,7 +325,7 @@
         :set AjsonString "$AjsonString$AvalueJson";
     } else={
         if ($IsArray) do={
-            :if ([:typeof $Avalue] = "num") do={
+            :if ([:typeof $Avalue] = "num" || [:typeof $Avalue] = "bool") do={
                 :set AjsonString "$AjsonString$Avalue";
             } else={
                 :set AjsonString "$AjsonString\"$Avalue\"";
@@ -319,7 +334,11 @@
             :if ([:typeof $Avalue] = "num") do={
                 :set AjsonString "$AjsonString\"$Akey\":$Avalue";
             } else={
-                :set AjsonString "$AjsonString\"$Akey\":\"$Avalue\"";
+                 :if ($Avalue = "[]" || $Avalue = "{}" || ([:typeof $Avalue] = "bool")) do={
+                    :set AjsonString "$AjsonString\"$Akey\":$Avalue";
+                } else={
+                    :set AjsonString "$AjsonString\"$Akey\":\"$Avalue\"";
+                }
             }
         }
     }
@@ -576,13 +595,13 @@
     if (!any $b) do={
         :set out [/tool fetch url=$requestUrl check-certificate=$certCheck http-method=$m output=user as-value];
     } else={
-        :set out [/tool fetch url=$requestUrl check-certificate=$certCheck http-method=$m http-data=$b output=user as-value];
+        :set out [/tool fetch url=$requestUrl check-certificate=$certCheck http-header-field="cache-control: no-cache, content-type: application/json, Accept: */*" http-method="$m" http-data="$b" output=user as-value];
     }
     if ($out->"status" = "finished") do={
         :local parses [$JSONLoads ($out->"data")];
-        :return { "status"=true; "response"=($out->"data"); "parsed"=$parses };
+        :return { "status"=true; "response"=($out->"data"); "parsed"=$parses; "requestUrl"=$requestUrl };
     } else={
-        :return { "status"=false; "reason"=($out->"status") };
+        :return { "status"=false; "reason"=($out->"status"); "requestUrl"=$requestUrl };
     }
 }
 
@@ -615,104 +634,3 @@
         :return $loginIsOkLastCheckvalue;
     }
 };
-
-# Function to get timestamp in seconds, minutes, hours, or days
-# save it in a global variable to get diff between it and the current timestamp.
-# synctax:
-#       :put [$getTimestamp <s|m|d|h> <your saved timestamp variable to get diff>]
-:global getTimestamp do={
-    :local format $1;
-    :local out;
-    :local time2parse [:timestamp]
-    :local w [:find $time2parse "w"]
-    :local d [:find $time2parse "d"]
-    :local c [:find $time2parse ":"]
-    :local p [:find $time2parse "."]
-    :local weeks [:pick $time2parse 0 [$w]]
-    :set $weeks [:tonum ($weeks * 604800)]
-    :local days [:pick $time2parse ($w + 1) $d]
-    :set days [:tonum ($days * 86400)]
-    :local hours [:pick $time2parse ($d + 1) $c]
-    :set hours [:tonum ($hours * 3600)]
-    :local minutes [:pick $time2parse ($c + 1) [:find $time2parse ($c + 3)]]
-    :set minutes [:tonum ($minutes * 60)]
-    :local seconds [:pick $time2parse ($c + 4) $p]
-    :local rawtime ($weeks+$days+$hours+$minutes+$seconds)
-    :local current ($weeks+$days+$hours+$minutes+$seconds)
-    if (!any $lastTimestamp) do={
-        :global lastTimestamp $rawtime;
-    }
-    if ([:typeof $2] = "num") do={
-        :set lastTimestamp $2;
-    }
-    :if ($format = "s") do={
-      :local diff ($rawtime - $lastTimestamp);
-      :set out { "current"=$current; "diff"=$diff;}
-      :global lastTimestamp $rawtime;
-      :return $out;
-    } else={
-      :if ($format = "m") do={
-           :local diff (($rawtime - $lastTimestamp)/60);
-           :set out { "current"=$current; "diff"=$diff }
-           :global lastTimestamp $rawtime;
-           :return $out;
-      } else={
-        :if ($format = "h") do={
-           :local diff (($rawtime - $lastTimestamp)/3600);
-           :set out { "current"=$current; "diff"=$diff }
-           :global lastTimestamp $rawtime;
-           :return $out;
-        } else={
-          :if ($format = "d") do={
-               :local diff (($rawtime - $lastTimestamp)/86400);
-               :set out { "current"=$current; "diff"=$diff }
-               :global lastTimestamp $rawtime;
-               :return $out;
-          } else={
-              :local diff ($rawtime - $lastTimestamp);
-              :set out { "current"=$current; "diff"=$diff }
-              :global lastTimestamp $rawtime;
-              :return $out;
-          }
-        }
-      }
-    }
-}
-# Function to collect all information needed yo be sent to config endpoint
-# usage: 
-#   :put [$getAllConfigs <interfacesinfos array>] 
-# result will be in this format:
-#      ("{"clientInfo":"$topClientInfo", "osVersion":"$osversion", "hardwareMake":"$hardwaremake",
-#     "hardwareModel":"$hardwaremodel","hardwareCpuInfo":"$cpu","os":"$os","osBuildDate":$osbuilddate
-#     ,"fw":"$topClientInfo","hostname":"$hostname","interfaces":[$ifaceDataArray],"wirelessConfigured":[$wapArray],
-#     "webshellSupport":true,"bandwidthTestSupport":true,"firmwareUpgradeSupport":true,"wirelessSupport":true}");
-
-:global getAllConfigsFigs do={
-    :do {
-        :local buildTime [/system resource get build-time];
-        :local osbuilddate [$rosTimestringSec $buildTime];
-        :set osbuilddate [:tostr $osbuilddate];
-        :local data {
-            "clientInfo"=$topClientInfo;
-            "osVersion"=[/system resource get version];
-            "hardwareMake"=[/system resource get platform];
-            "hardwareModel"=[/system resource get board-name];
-            "hardwareCpuInfo"=[/system resource get cpu];
-            "osBuildDate"=[:tostr [$rosTimestringSec [/system resource get build-time]]];
-            "fw"=$topClientInfo;
-            "hostname"=[/system identity get name];
-            "os"=[/system package get 0 name];
-            "wirelessConfigured"=$1;
-            "webshellSupport"=true;
-            "firmwareUpgradeSupport"=true;
-            "wirelessSupport"=true;
-            "bandwidthTestSupport"=true
-        };
-        :local json [$toJson $data];
-        :log info "Configs body json created with success (getAllConfigsFigs function -> true).";
-        :return {"status"=true; "json"=$json};
-    } on-error={
-        :log error "faild to build config json object!";
-        :return {"status"=false; "reason"="faild to build config json object!"};
-    }
-}
