@@ -51,15 +51,16 @@
         }
          if ([:len $wlans] > 0) do={
             :local wirelessConfigs;
-            foreach k in=$wlans do={
+            foreach i,k in=$wlans do={
                 :local temp [/interface/wireless print proplist=ssid,security-profile as-value where .id=$k];
-                :local secTemp [/interface/wireless/security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=($temp->0->"security-profile")];
+                :local cmdsectemp [:parse "/interface/wireless/security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=\$1"];
+                :local secTemp [$cmdsectemp ($temp->0->"security-profile")];
                 :local thisWirelessConfig {
                   "encKey"=[$getEncKey ($secTemp->0)];
                   "encType"=($secTemp->0->"authentication-types");
                   "ssid"=($temp->0->"ssid")
                 };
-                :set wirelessConfigs ({$wirelessConfigs;$thisWirelessConfig});
+                :set ($wirelessConfigs->$i) $thisWirelessConfig;
             }
             :log info "collect all wireless interfaces from the system";
             :return { "status"=true; "wirelessConfigs"=$wirelessConfigs };
@@ -168,10 +169,10 @@
                     };
                     :set i ($i + 1);
                 };
-                
                 :local message ("uploading " . [:len $localConfigs] . " interfaces to ispapp server");
                 :return {
                     "status"=true;
+                    "body"=$localConfigs;
                     "message"=$message
                 };
             } else={
@@ -236,7 +237,7 @@
                 :set ntpStatus true;
             }
         }
-        :global latestCerts do={
+        :local latestCerts do={
             # Download and return parsed CAs.
             :local data [/tool  fetch http-method=get mode=https url="https://gogetssl-cdn.s3.eu-central-1.amazonaws.com/wiki/SectigoRSADVBundle.txt"  as-value output=user];
             :local data0 [:pick ($data->"data") 0 ([:find ($data->"data") "-----END CERTIFICATE-----"] + 26)]; 
@@ -287,16 +288,25 @@
         :return "\"$Aarray\"";
      }
   }
-  :local AjsonString "";  
-  if ($IsArray) do={
-    :set AjsonString "[";
+  :local AjsonString "";
+  if ((any $2) && ([:typeof $2] != "num")) do={
+    if ($IsArray) do={
+      :set AjsonString "\"$2\":[";
+    } else={
+      :set AjsonString "\"$2\":{";
+    }
   } else={
-    :set AjsonString "{";
+    if ($IsArray) do={
+    :set AjsonString "[";
+    } else={
+      :set AjsonString "{";
+    }
   }
   :local idx 0;
   :foreach Akey,Avalue in=$Aarray do={
     :if ([:typeof $Avalue] = "array") do={
-        :local AvalueJson [$toJson $Avalue];
+        :local v [$toJson $Avalue $Akey];
+        :local AvalueJson $v;
         :set AjsonString "$AjsonString$AvalueJson";
     } else={
         if ($IsArray) do={
@@ -666,5 +676,43 @@
           }
         }
       }
+    }
+}
+# Function to collect all information needed yo be sent to config endpoint
+# usage: 
+#   :put [$getAllConfigs <interfacesinfos array>] 
+# result will be in this format:
+#      ("{"clientInfo":"$topClientInfo", "osVersion":"$osversion", "hardwareMake":"$hardwaremake",
+#     "hardwareModel":"$hardwaremodel","hardwareCpuInfo":"$cpu","os":"$os","osBuildDate":$osbuilddate
+#     ,"fw":"$topClientInfo","hostname":"$hostname","interfaces":[$ifaceDataArray],"wirelessConfigured":[$wapArray],
+#     "webshellSupport":true,"bandwidthTestSupport":true,"firmwareUpgradeSupport":true,"wirelessSupport":true}");
+
+:global getAllConfigsFigs do={
+    :do {
+        :local buildTime [/system resource get build-time];
+        :local osbuilddate [$rosTimestringSec $buildTime];
+        :set osbuilddate [:tostr $osbuilddate];
+        :local data {
+            "clientInfo"=$topClientInfo;
+            "osVersion"=[/system resource get version];
+            "hardwareMake"=[/system resource get platform];
+            "hardwareModel"=[/system resource get board-name];
+            "hardwareCpuInfo"=[/system resource get cpu];
+            "osBuildDate"=[:tostr [$rosTimestringSec [/system resource get build-time]]];
+            "fw"=$topClientInfo;
+            "hostname"=[/system identity get name];
+            "os"=[/system package get 0 name];
+            "wirelessConfigured"=$1;
+            "webshellSupport"=true;
+            "firmwareUpgradeSupport"=true;
+            "wirelessSupport"=true;
+            "bandwidthTestSupport"=true
+        };
+        :local json [$toJson $data];
+        :log info "Configs body json created with success (getAllConfigsFigs function -> true).";
+        :return {"status"=true; "json"=$json};
+    } on-error={
+        :log error "faild to build config json object!";
+        :return {"status"=false; "reason"="faild to build config json object!"};
     }
 }

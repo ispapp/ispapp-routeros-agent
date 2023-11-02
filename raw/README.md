@@ -2,16 +2,15 @@
 __Converts a mixed array into a JSON string__
 
 ```routeros
-:local mixedArray0 { 
+:local mixedArray { 
     "name"="John"; 
     "age"=30; 
     "hobbies"={ 
         "sports"={"football"; "basketball"="karim"}; 
         "music"={"rock"=2; "pop"}
         }; 
-    "numbers"=(42, 77, "letter")
-};
-:local mixedArray1 (42, 77, {"kimo":"nice"}); :local jsonString [$toJson $mixedArray];:put ("JSON String: " . $jsonString);
+    "letters"=("tick", {"nice"="me"; "hsi"=0})
+}; :local jsonString [$toJson $mixedArray];:put ("JSON String: " . $jsonString);
 ```
 
 **$WirelessInterfacesConfigSync Funtion Usage** ([**_code_**](#_WirelessInterfacesConfigSync-funtion-usage))
