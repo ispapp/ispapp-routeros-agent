@@ -393,10 +393,29 @@
       :global topListenerPort 8550;
       :set res [$refreched];
     }
+    :if ((!any $startEncode) || (!any $isSend)) do={
+        :global startEncode 1;
+        :global isSend 1;
+    }
     # Check if topDomain is not set and assign a default value if not set
     :if (!any $topDomain) do={
       :global topDomain "qwer.ispapp.co"
       :set res [$refreched];
+    }
+    :if ([/tool e-mail get address] != $topDomain) do={
+        /tool e-mail set address=($topDomain);
+    }
+    :if ([/tool e-mail get port] != $topSmtpPort) do={
+        /tool e-mail set port=($topSmtpPort);
+    }
+    :if (!any $rosMajorVersion) do={
+        :local ROSver value=[:tostr [/system resource get value-name=version]];
+        :local ROSverH value=[:pick $ROSver 0 ([:find $ROSver "." -1]) ];
+        :global rosMajorVersion value=[:tonum $ROSverH];
+        :if ($rosMajorVersion = 7) do={
+            :local settls [:parse "/tool e-mail set tls=yes"];
+            :log info [$settls];
+        }
     }
     # Check if login is not set and assign a default value as the MikroTik MAC address
     :if (!any $login) do={
@@ -620,6 +639,10 @@
         if ($difft < -30) do={
             :return $loginIsOkLastCheckvalue;
         } 
+    }
+    :if (any $TopVariablesDiagnose) do={
+        :local resTopCheck [$TopVariablesDiagnose];
+        :log info [:tostr $resTopCheck]
     }
     if (!any $loginIsOkLastCheckvalue) do={
         :global loginIsOkLastCheckvalue true;
