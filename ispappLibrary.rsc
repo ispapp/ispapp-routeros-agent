@@ -1,5 +1,5 @@
 # 2023-11-07 16:32:05
-add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
+/system script add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
     ############################## this file contain predefined functions to b\
     e used across the agent script ################################\r\

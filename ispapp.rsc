@@ -35,7 +35,7 @@
 
 :put "Download and import ispappInit.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappInit.rsc" dst-path="ispappInit.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappInit.rsc" dst-path="ispappInit.rsc"
   /import ispappInit.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappInit.rsc"; :delay 1s}
