@@ -1,4 +1,6 @@
 
+# for checking purposes
+:global ispappLibraryV2 "ispappLibraryV2 loaded";
 # Function to get timestamp in seconds, minutes, hours, or days
 # save it in a global variable to get diff between it and the current timestamp.
 # synctax:
@@ -22,9 +24,7 @@
     :local seconds [:pick $time2parse ($c + 4) $p]
     :local rawtime ($weeks+$days+$hours+$minutes+$seconds)
     :local current ($weeks+$days+$hours+$minutes+$seconds)
-    if (!any $lastTimestamp) do={
-        :global lastTimestamp $rawtime;
-    }
+    :global lastTimestamp $lastTimestamp;
     if ([:typeof $2] = "num") do={
         :set lastTimestamp $2;
     }
@@ -111,3 +111,73 @@
         :return {"status"=false; "reason"="faild to build config json object!"};
     }
 }
+
+# Function to check if credentials are ok
+# get last login state and save it for avoiding server loading 
+# syntax:
+#       :put [$loginIsOk] \\ result: true/false
+:global loginIsOk do={
+    # check if login and password are correct
+    :global loginIsOkLastCheck $loginIsOkLastCheck;
+    if (!any $loginIsOkLastCheck) do={
+        :global loginIsOkLastCheck ([$getTimestamp]->"current");
+    } else={
+        :local difft ([$getTimestamp s $loginIsOkLastCheck]->"diff") ;
+        if ($difft < -30) do={
+            :return $loginIsOkLastCheckvalue;
+        } 
+    }
+    :if (any $TopVariablesDiagnose) do={
+        :local resTopCheck [$TopVariablesDiagnose];
+        :log info [:tostr $resTopCheck]
+    }
+    :global loginIsOkLastCheckvalue $loginIsOkLastCheckvalue;
+    if (!any $loginIsOkLastCheckvalue) do={
+        :set loginIsOkLastCheckvalue true;
+    }
+    :do {
+        :set loginIsOkLastCheck ([$getTimestamp]->"current");
+        :local res [/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value];
+        :set loginIsOkLastCheckvalue ($res->"status" = "finished");
+        :log info "check if login and password are correct completed with responce: $loginIsOkLastCheckvalue";
+        :return $loginIsOkLastCheckvalue;
+    } on-error={
+        :log info "check if login and password are correct completed with responce: error";
+        :set loginIsOkLastCheckvalue false;
+        :return $loginIsOkLastCheckvalue;
+    }
+};
+:put "\t V2 Library loaded! (;";
+# Function to send updates to host
+# usage: 
+#       :put [$HostDataUpdate] // result: {status=<bool>; bayload=<post_request_payload | none>, error_reason=<string>}
+# params: none
+# requirements: ispappLibraryV1 and ispappInit
+# tasks performed by the function:
+#   - collect data from the device and format it in json using the fuction toJson
+#   - check updates comming from the host and apply them to device
+#   - run cmds and return results
+# :global HostDataUpdate do={
+#     :local ssl [$prepareSSL];
+#     :if (($ssl->"caStatus" = false) || ($ssl->"ntpStatus" = false)) do={
+#         :log error [:tostr $ssl];
+#     }
+#     :if (![$loginIsOk]) do={
+#         :log error [:tostr $login];
+#         [$TopVariablesDiagnose];
+#         :if (![$loginIsOk]) do={
+#             :log error "login faild! check your topKey global variable!!";
+#             :return { "status"=false; "error_reason"="login faild! check your topKey global variable" }
+#         }
+#     }
+#     :local sequenceNumber [[:parse "/system/scheduler/get ispappUpdate run-count"]];
+#     :local upTime [/system resource get uptime];
+#     :local collectedData {
+#         "collectors"={};
+#         "wanIp"=;
+#         "uptime"=$upTime;
+#         "sequenceNumber"=$sequenceNumber;
+#     };
+    
+# }
+

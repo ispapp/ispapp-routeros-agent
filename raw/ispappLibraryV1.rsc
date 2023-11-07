@@ -1,5 +1,7 @@
 ############################### this file contain predefined functions to be used across the agent script ################################
-
+# for checking purposes
+:global ispappLibraryV1 "ispappLibraryV1 loaded";
+:global login;
 # Function to collect all wireless interfaces and format them to be sent to server.
 # @param $topDomain - domain of the server
 # @param $topKey - key of the server
@@ -357,31 +359,6 @@
   :return $AjsonString;
 }
 
-# @Details: Function to convert to lowercase or uppercase 
-# @Syntax: $strcaseconv <input string>
-# @Example: :put ([$strcaseconv sdsdFS2k-122nicepp#]->"upper") --> result: SDSDFS2K-122NICEPP#
-# @Example: :put ([$strcaseconv sdsdFS2k-122nicepp#]->"lower") --> result: sdsdfs2k-122nicepp#
-:global strcaseconv do={
-    :local outputupper;
-    :local outputlower;
-    :local lower ("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z")
-    :local upper ("A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z")
-    :local lent [:len $1];
-    :for i from=0 to=($lent - 1) do={ 
-        if (any [:find $lower [:pick $1 $i]]) do={
-            :set outputupper ($outputupper . [:pick $upper [:find $lower [:pick $1 $i]]]);
-        } else={
-            :set outputupper ($outputupper . [:pick $1 $i])
-        }
-        if (any [:find $upper [:pick $1 $i]]) do={
-            :set outputlower ($outputlower . [:pick $lower [:find $upper [:pick $1 $i]]]);
-        } else={
-            :set outputlower ($outputlower . [:pick $1 $i])
-        }
-    }
-    :return {upper=$outputupper; lower=$outputlower};
-}
-
 # @Details: Function to Diagnose important global variable for agent connection
 # @Syntax: $TopVariablesDiagnose
 # @Example: :put [$TopVariablesDiagnose] or just $TopVariablesDiagnose
@@ -441,6 +418,7 @@
             }
         }
     }
+    :global login $login;
     :set login ([$strcaseconv $login]->"lower");
   }
   :return $res;
@@ -451,7 +429,7 @@
 #   [$removeIspappScripts] // don't expect no returns check just the logs after.
 :global removeIspappScripts do={
     :local scriptList [/system script find where name~"ispapp.*"]
-    if ([:len [/system script find where name~"ispapp.*"]] > 0) {
+    if ([:len [/system script find where name~"ispapp.*"]] > 0) do={
         :foreach scriptId in=$scriptList do={
             :local scriptName [/system script get $scriptId name];
             :do {
@@ -471,7 +449,7 @@
 #   [$removeIspappSchedulers] // don't expect no returns check just the logs after.
 :global removeIspappSchedulers do={
     :local scriptList [/system scheduler find where name~"ispapp.*"]
-    if ([:len [/system scheduler find where name~"ispapp.*"]] > 0) {
+    if ([:len [/system scheduler find where name~"ispapp.*"]] > 0) do={
         :foreach schedulerId in=$schedulerList do={
             :do {
                 /system scheduler remove $schedulerId;
@@ -625,37 +603,4 @@
         :return { "status"=false; "reason"=($out->"status"); "requestUrl"=$requestUrl };
     }
 }
-
-# Function to check if credentials are ok
-# get last login state and save it for avoiding server loading 
-# syntax:
-#       :put [$loginIsOk] \\ result: true/false
-:global loginIsOk do={
-    # check if login and password are correct
-    if (!any $loginIsOkLastCheck) do={
-        :global loginIsOkLastCheck ([$getTimestamp]->"current");
-    } else={
-        :local difft ([$getTimestamp s $loginIsOkLastCheck]->"diff") ;
-        if ($difft < -30) do={
-            :return $loginIsOkLastCheckvalue;
-        } 
-    }
-    :if (any $TopVariablesDiagnose) do={
-        :local resTopCheck [$TopVariablesDiagnose];
-        :log info [:tostr $resTopCheck]
-    }
-    if (!any $loginIsOkLastCheckvalue) do={
-        :global loginIsOkLastCheckvalue true;
-    }
-    :do {
-        :set loginIsOkLastCheck ([$getTimestamp]->"current");
-        :local res [/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value];
-        :set loginIsOkLastCheckvalue ($res->"status" = "finished");
-        :log info "check if login and password are correct completed with responce: $loginIsOkLastCheckvalue";
-        :return $loginIsOkLastCheckvalue;
-    } on-error={
-        :log info "check if login and password are correct completed with responce: error";
-        :set loginIsOkLastCheckvalue false;
-        :return $loginIsOkLastCheckvalue;
-    }
-};
+:put "\t V1 Library loaded! (;";

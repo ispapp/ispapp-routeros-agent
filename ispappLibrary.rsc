@@ -1,10 +1,10 @@
-# 2023-11-02 23:37:37
-/system script
 add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
     ############################## this file contain predefined functions to b\
     e used across the agent script ################################\r\
-    \n\r\
+    \n# for checking purposes\r\
+    \n:global ispappLibraryV1 \"ispappLibraryV1 loaded\";\r\
+    \n:global login;\r\
     \n# Function to collect all wireless interfaces and format them to be sent\
     \_to server.\r\
     \n# @param \$topDomain - domain of the server\r\
@@ -465,39 +465,6 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n  :return \$AjsonString;\r\
     \n}\r\
     \n\r\
-    \n# @Details: Function to convert to lowercase or uppercase \r\
-    \n# @Syntax: \$strcaseconv <input string>\r\
-    \n# @Example: :put ([\$strcaseconv sdsdFS2k-122nicepp#]->\"upper\") --> re\
-    sult: SDSDFS2K-122NICEPP#\r\
-    \n# @Example: :put ([\$strcaseconv sdsdFS2k-122nicepp#]->\"lower\") --> re\
-    sult: sdsdfs2k-122nicepp#\r\
-    \n:global strcaseconv do={\r\
-    \n    :local outputupper;\r\
-    \n    :local outputlower;\r\
-    \n    :local lower (\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\
-    \"j\",\"k\",\"l\",\"m\",\"n\",\"o\",\"p\",\"q\",\"r\",\"s\",\"t\",\"u\",\"\
-    v\",\"w\",\"x\",\"y\",\"z\")\r\
-    \n    :local upper (\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\
-    \"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\",\"S\",\"T\",\"U\",\"\
-    V\",\"W\",\"X\",\"Y\",\"Z\")\r\
-    \n    :local lent [:len \$1];\r\
-    \n    :for i from=0 to=(\$lent - 1) do={ \r\
-    \n        if (any [:find \$lower [:pick \$1 \$i]]) do={\r\
-    \n            :set outputupper (\$outputupper . [:pick \$upper [:find \$lo\
-    wer [:pick \$1 \$i]]]);\r\
-    \n        } else={\r\
-    \n            :set outputupper (\$outputupper . [:pick \$1 \$i])\r\
-    \n        }\r\
-    \n        if (any [:find \$upper [:pick \$1 \$i]]) do={\r\
-    \n            :set outputlower (\$outputlower . [:pick \$lower [:find \$up\
-    per [:pick \$1 \$i]]]);\r\
-    \n        } else={\r\
-    \n            :set outputlower (\$outputlower . [:pick \$1 \$i])\r\
-    \n        }\r\
-    \n    }\r\
-    \n    :return {upper=\$outputupper; lower=\$outputlower};\r\
-    \n}\r\
-    \n\r\
     \n# @Details: Function to Diagnose important global variable for agent con\
     nection\r\
     \n# @Syntax: \$TopVariablesDiagnose\r\
@@ -514,11 +481,32 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n      :global topListenerPort 8550;\r\
     \n      :set res [\$refreched];\r\
     \n    }\r\
+    \n    :if ((!any \$startEncode) || (!any \$isSend)) do={\r\
+    \n        :global startEncode 1;\r\
+    \n        :global isSend 1;\r\
+    \n    }\r\
     \n    # Check if topDomain is not set and assign a default value if not se\
     t\r\
     \n    :if (!any \$topDomain) do={\r\
     \n      :global topDomain \"qwer.ispapp.co\"\r\
     \n      :set res [\$refreched];\r\
+    \n    }\r\
+    \n    :if ([/tool e-mail get address] != \$topDomain) do={\r\
+    \n        /tool e-mail set address=(\$topDomain);\r\
+    \n    }\r\
+    \n    :if ([/tool e-mail get port] != \$topSmtpPort) do={\r\
+    \n        /tool e-mail set port=(\$topSmtpPort);\r\
+    \n    }\r\
+    \n    :if (!any \$rosMajorVersion) do={\r\
+    \n        :local ROSver value=[:tostr [/system resource get value-name=ver\
+    sion]];\r\
+    \n        :local ROSverH value=[:pick \$ROSver 0 ([:find \$ROSver \".\" -1\
+    ]) ];\r\
+    \n        :global rosMajorVersion value=[:tonum \$ROSverH];\r\
+    \n        :if (\$rosMajorVersion = 7) do={\r\
+    \n            :local settls [:parse \"/tool e-mail set tls=yes\"];\r\
+    \n            :log info [\$settls];\r\
+    \n        }\r\
     \n    }\r\
     \n    # Check if login is not set and assign a default value as the MikroT\
     ik MAC address\r\
@@ -551,6 +539,7 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n            }\r\
     \n        }\r\
     \n    }\r\
+    \n    :global login \$login;\r\
     \n    :set login ([\$strcaseconv \$login]->\"lower\");\r\
     \n  }\r\
     \n  :return \$res;\r\
@@ -563,7 +552,7 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     gs after.\r\
     \n:global removeIspappScripts do={\r\
     \n    :local scriptList [/system script find where name~\"ispapp.*\"]\r\
-    \n    if ([:len [/system script find where name~\"ispapp.*\"]] > 0) {\r\
+    \n    if ([:len [/system script find where name~\"ispapp.*\"]] > 0) do={\r\
     \n        :foreach scriptId in=\$scriptList do={\r\
     \n            :local scriptName [/system script get \$scriptId name];\r\
     \n            :do {\r\
@@ -588,7 +577,8 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \_logs after.\r\
     \n:global removeIspappSchedulers do={\r\
     \n    :local scriptList [/system scheduler find where name~\"ispapp.*\"]\r\
-    \n    if ([:len [/system scheduler find where name~\"ispapp.*\"]] > 0) {\r\
+    \n    if ([:len [/system scheduler find where name~\"ispapp.*\"]] > 0) do=\
+    {\r\
     \n        :foreach schedulerId in=\$schedulerList do={\r\
     \n            :do {\r\
     \n                /system scheduler remove \$schedulerId;\r\
@@ -769,46 +759,12 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     questUrl\"=\$requestUrl };\r\
     \n    }\r\
     \n}\r\
-    \n\r\
-    \n# Function to check if credentials are ok\r\
-    \n# get last login state and save it for avoiding server loading \r\
-    \n# syntax:\r\
-    \n#       :put [\$loginIsOk] \\\\ result: true/false\r\
-    \n:global loginIsOk do={\r\
-    \n    # check if login and password are correct\r\
-    \n    if (!any \$loginIsOkLastCheck) do={\r\
-    \n        :global loginIsOkLastCheck ([\$getTimestamp]->\"current\");\r\
-    \n    } else={\r\
-    \n        :local difft ([\$getTimestamp s \$loginIsOkLastCheck]->\"diff\")\
-    \_;\r\
-    \n        if (\$difft < -30) do={\r\
-    \n            :return \$loginIsOkLastCheckvalue;\r\
-    \n        } \r\
-    \n    }\r\
-    \n    if (!any \$loginIsOkLastCheckvalue) do={\r\
-    \n        :global loginIsOkLastCheckvalue true;\r\
-    \n    }\r\
-    \n    :do {\r\
-    \n        :set loginIsOkLastCheck ([\$getTimestamp]->\"current\");\r\
-    \n        :local res [/tool fetch url=\"https://\$topDomain:\$topListenerP\
-    ort/update\?login=\$login&key=\$topKey\" mode=https check-certificate=yes \
-    output=user as-value];\r\
-    \n        :set loginIsOkLastCheckvalue (\$res->\"status\" = \"finished\");\
-    \r\
-    \n        :log info \"check if login and password are correct completed wi\
-    th responce: \$loginIsOkLastCheckvalue\";\r\
-    \n        :return \$loginIsOkLastCheckvalue;\r\
-    \n    } on-error={\r\
-    \n        :log info \"check if login and password are correct completed wi\
-    th responce: error\";\r\
-    \n        :set loginIsOkLastCheckvalue false;\r\
-    \n        :return \$loginIsOkLastCheckvalue;\r\
-    \n    }\r\
-    \n};\r\
-    \n"
+    \n:put \"V1 Library loaded! (;\";"
 add dont-require-permissions=no name=ispappLibraryV2 owner=admin policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="\
     \r\
+    \n# for checking purposes\r\
+    \n:global ispappLibraryV2 \"ispappLibraryV2 loaded\";\r\
     \n# Function to get timestamp in seconds, minutes, hours, or days\r\
     \n# save it in a global variable to get diff between it and the current ti\
     mestamp.\r\
@@ -835,9 +791,7 @@ add dont-require-permissions=no name=ispappLibraryV2 owner=admin policy=\
     \n    :local seconds [:pick \$time2parse (\$c + 4) \$p]\r\
     \n    :local rawtime (\$weeks+\$days+\$hours+\$minutes+\$seconds)\r\
     \n    :local current (\$weeks+\$days+\$hours+\$minutes+\$seconds)\r\
-    \n    if (!any \$lastTimestamp) do={\r\
-    \n        :global lastTimestamp \$rawtime;\r\
-    \n    }\r\
+    \n    :global lastTimestamp \$lastTimestamp;\r\
     \n    if ([:typeof \$2] = \"num\") do={\r\
     \n        :set lastTimestamp \$2;\r\
     \n    }\r\
@@ -933,6 +887,86 @@ add dont-require-permissions=no name=ispappLibraryV2 owner=admin policy=\
     on object!\"};\r\
     \n    }\r\
     \n}\r\
+    \n\r\
+    \n# Function to check if credentials are ok\r\
+    \n# get last login state and save it for avoiding server loading \r\
+    \n# syntax:\r\
+    \n#       :put [\$loginIsOk] \\\\ result: true/false\r\
+    \n:global loginIsOk do={\r\
+    \n    # check if login and password are correct\r\
+    \n    :global loginIsOkLastCheck \$loginIsOkLastCheck;\r\
+    \n    if (!any \$loginIsOkLastCheck) do={\r\
+    \n        :global loginIsOkLastCheck ([\$getTimestamp]->\"current\");\r\
+    \n    } else={\r\
+    \n        :local difft ([\$getTimestamp s \$loginIsOkLastCheck]->\"diff\")\
+    \_;\r\
+    \n        if (\$difft < -30) do={\r\
+    \n            :return \$loginIsOkLastCheckvalue;\r\
+    \n        } \r\
+    \n    }\r\
+    \n    :if (any \$TopVariablesDiagnose) do={\r\
+    \n        :local resTopCheck [\$TopVariablesDiagnose];\r\
+    \n        :log info [:tostr \$resTopCheck]\r\
+    \n    }\r\
+    \n    :global loginIsOkLastCheckvalue \$loginIsOkLastCheckvalue;\r\
+    \n    if (!any \$loginIsOkLastCheckvalue) do={\r\
+    \n        :set loginIsOkLastCheckvalue true;\r\
+    \n    }\r\
+    \n    :do {\r\
+    \n        :set loginIsOkLastCheck ([\$getTimestamp]->\"current\");\r\
+    \n        :local res [/tool fetch url=\"https://\$topDomain:\$topListenerP\
+    ort/update\?login=\$login&key=\$topKey\" mode=https check-certificate=yes \
+    output=user as-value];\r\
+    \n        :set loginIsOkLastCheckvalue (\$res->\"status\" = \"finished\");\
+    \r\
+    \n        :log info \"check if login and password are correct completed wi\
+    th responce: \$loginIsOkLastCheckvalue\";\r\
+    \n        :return \$loginIsOkLastCheckvalue;\r\
+    \n    } on-error={\r\
+    \n        :log info \"check if login and password are correct completed wi\
+    th responce: error\";\r\
+    \n        :set loginIsOkLastCheckvalue false;\r\
+    \n        :return \$loginIsOkLastCheckvalue;\r\
+    \n    }\r\
+    \n};\r\
+    \n:put \"\\t V2 Library loaded! (;\";\r\
+    \n# Function to send updates to host\r\
+    \n# usage: \r\
+    \n#       :put [\$HostDataUpdate] // result: {status=<bool>; bayload=<post\
+    _request_payload | none>, error_reason=<string>}\r\
+    \n# params: none\r\
+    \n# requirements: ispappLibraryV1 and ispappInit\r\
+    \n# tasks performed by the function:\r\
+    \n#   - collect data from the device and format it in json using the fucti\
+    on toJson\r\
+    \n#   - check updates comming from the host and apply them to device\r\
+    \n#   - run cmds and return results\r\
+    \n# :global HostDataUpdate do={\r\
+    \n#     :local ssl [\$prepareSSL];\r\
+    \n#     :if ((\$ssl->\"caStatus\" = false) || (\$ssl->\"ntpStatus\" = fals\
+    e)) do={\r\
+    \n#         :log error [:tostr \$ssl];\r\
+    \n#     }\r\
+    \n#     :if (![\$loginIsOk]) do={\r\
+    \n#         :log error [:tostr \$login];\r\
+    \n#         [\$TopVariablesDiagnose];\r\
+    \n#         :if (![\$loginIsOk]) do={\r\
+    \n#             :log error \"login faild! check your topKey global variabl\
+    e!!\";\r\
+    \n#             :return { \"status\"=false; \"error_reason\"=\"login faild\
+    ! check your topKey global variable\" }\r\
+    \n#         }\r\
+    \n#     }\r\
+    \n#     :local sequenceNumber [[:parse \"/system/scheduler/get ispappUpdat\
+    e run-count\"]];\r\
+    \n#     :local upTime [/system resource get uptime];\r\
+    \n#     :local collectedData {\r\
+    \n#         \"collectors\"={};\r\
+    \n#         \"wanIp\"=;\r\
+    \n#         \"uptime\"=\$upTime;\r\
+    \n#         \"sequenceNumber\"=\$sequenceNumber;\r\
+    \n#     };\r\
+    \n    \r\
+    \n# }\r\
+    \n\r\
     \n"
-/system script run ispappLibraryV2
-/system script run ispappLibraryV1
