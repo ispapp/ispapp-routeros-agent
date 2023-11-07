@@ -1,11 +1,3 @@
-:put "Download and import clean.rsc"
-:do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappClean.rsc" dst-path="ispappClean.rsc"
-  /import ispappClean.rsc
-  :delay 3s
-} on-error={:put "Error fetching ispappClean.rsc"; :delay 1s}
-
-
 :global topKey "#####HOST_KEY#####";
 :global topDomain "#####DOMAIN#####";
 :global topClientInfo "RouterOS-v3.14.1";
@@ -17,6 +9,11 @@
 :global ipbandswtestserver "#####bandswtest#####";
 :global btuser "#####btest#####";
 :global btpwd "#####btp#####";
+
+# cleanup old setup if exist (scripts, files, schedulers)
+/system/script/remove [/system/script/find where name~"ispapp"]
+/file/remove [/file/find where name~"ispapp"]
+/system/scheduler/remove [/system/scheduler/find where name~"ispapp"]
 
 :put "ispappConfig.rsc"
 :do {
@@ -131,4 +128,3 @@ add interval=300s name=ispappConfig on-event=ispappConfig policy=\
 /system script run ispappInit;
 
 :log info ("Completed Mikrotik Script")
-

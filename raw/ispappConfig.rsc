@@ -78,8 +78,6 @@ if ($sameScriptRunningCount > 1) do={
 }
 :if ([:len [/system/script/find where name~"ispappLibrary"]] = 0) do={
   :put "Download and import ispappLibrary.rsc"
-  /system/script/remove [/system/script/find where name~"ispappLibrary"]
-  /file/remove [/file/find where name~"ispappLibrary"]
   :do {
     /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
     /import ispappLibrary.rsc
@@ -89,8 +87,8 @@ if ($sameScriptRunningCount > 1) do={
   :foreach id in=[/system/script/find where name~"ispappLibrary"] do={ /system/script/run $id } 
 }
 :if (any $login) do={
-  :put [$TopVariablesDiagnose];
   :put [$prepareSSL];
+  :put [$TopVariablesDiagnose];
 }
 # run configs syncronisations.
 :if (any $WirelessInterfacesConfigSync) do={
