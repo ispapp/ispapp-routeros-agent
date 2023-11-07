@@ -109,7 +109,7 @@ add dont-require-permissions=no name=ispappConfig owner=admin policy=\
     \n  :foreach id in=[/system/script/find where name~\"ispappLibrary\"] do={\
     \_/system/script/run \$id } \r\
     \n}\r\
-    \n:if (!any login) do={\r\
+    \n:if (any \$login) do={\r\
     \n  :put [\$TopVariablesDiagnose];\r\
     \n  :put [\$prepareSSL];\r\
     \n}\r\

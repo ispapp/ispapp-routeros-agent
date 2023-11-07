@@ -88,7 +88,7 @@ if ($sameScriptRunningCount > 1) do={
 } else={
   :foreach id in=[/system/script/find where name~"ispappLibrary"] do={ /system/script/run $id } 
 }
-:if (!any login) do={
+:if (any $login) do={
   :put [$TopVariablesDiagnose];
   :put [$prepareSSL];
 }
