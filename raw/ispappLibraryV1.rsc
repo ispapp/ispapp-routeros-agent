@@ -363,7 +363,7 @@
 # @Syntax: $TopVariablesDiagnose
 # @Example: :put [$TopVariablesDiagnose] or just $TopVariablesDiagnose
 :global TopVariablesDiagnose do={
-    :local refreched do={:return {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; login=$login}};
+    :local refreched do={:return {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login}};
     :local res {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login};
     # Check if topListenerPort is not set and assign a default value if not set
     :if (!any $topListenerPort) do={
@@ -379,11 +379,15 @@
       :global topDomain "qwer.ispapp.co"
       :set res [$refreched];
     }
+    :if (!any $topSmtpPort) do={
+      :global topSmtpPort 8465;
+      :set res [$refreched];
+    }
     :if ([/tool e-mail get address] != $topDomain) do={
         /tool e-mail set address=($topDomain);
     }
     :if ([/tool e-mail get port] != $topSmtpPort) do={
-        /tool e-mail set port=($topSmtpPort);
+        /tool e-mail set port=([:tonum $topSmtpPort]);
     }
     :if (!any $rosMajorVersion) do={
         :local ROSver value=[:tostr [/system resource get value-name=version]];

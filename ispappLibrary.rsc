@@ -1,3 +1,4 @@
+# 2023-11-07 16:32:05
 add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
     ############################## this file contain predefined functions to b\
@@ -472,7 +473,7 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \r\
     \n:global TopVariablesDiagnose do={\r\
     \n    :local refreched do={:return {\"topListenerPort\"=\$topListenerPort;\
-    \_\"topDomain\"=\$topDomain; login=\$login}};\r\
+    \_\"topDomain\"=\$topDomain; \"login\"=\$login}};\r\
     \n    :local res {\"topListenerPort\"=\$topListenerPort; \"topDomain\"=\$t\
     opDomain; \"login\"=\$login};\r\
     \n    # Check if topListenerPort is not set and assign a default value if \
@@ -491,11 +492,15 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n      :global topDomain \"qwer.ispapp.co\"\r\
     \n      :set res [\$refreched];\r\
     \n    }\r\
+    \n    :if (!any \$topSmtpPort) do={\r\
+    \n      :global topSmtpPort 8465;\r\
+    \n      :set res [\$refreched];\r\
+    \n    }\r\
     \n    :if ([/tool e-mail get address] != \$topDomain) do={\r\
     \n        /tool e-mail set address=(\$topDomain);\r\
     \n    }\r\
     \n    :if ([/tool e-mail get port] != \$topSmtpPort) do={\r\
-    \n        /tool e-mail set port=(\$topSmtpPort);\r\
+    \n        /tool e-mail set port=([:tonum \$topSmtpPort]);\r\
     \n    }\r\
     \n    :if (!any \$rosMajorVersion) do={\r\
     \n        :local ROSver value=[:tostr [/system resource get value-name=ver\
@@ -759,7 +764,7 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     questUrl\"=\$requestUrl };\r\
     \n    }\r\
     \n}\r\
-    \n:put \"V1 Library loaded! (;\";"
+    \n:put \"\\t V1 Library loaded! (;\";"
 add dont-require-permissions=no name=ispappLibraryV2 owner=admin policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="\
     \r\
