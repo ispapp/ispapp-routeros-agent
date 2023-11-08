@@ -82,6 +82,8 @@ if ($sameScriptRunningCount > 1) do={
     /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
     /import ispappLibrary.rsc
     :delay 3s
+    /system/script/run ispappLibraryV1
+    /system/script/run ispappLibraryV2
   } on-error={:put "Error fetching ispappLibrary.rsc"; :delay 1s}
 } else={
   :foreach id in=[/system/script/find where name~"ispappLibrary"] do={ /system/script/run $id } 

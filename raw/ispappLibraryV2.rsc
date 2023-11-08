@@ -72,6 +72,10 @@
 
 :global getAllConfigs do={
     :do {
+        :global rosTimestringSec;
+        :global toJson;
+        :global topClientInfo;
+        :local data;
         :local buildTime [/system resource get build-time];
         :local osbuilddate [$rosTimestringSec $buildTime];
         :local interfaces;
@@ -86,22 +90,22 @@
             };
         }
         :set osbuilddate [:tostr $osbuilddate];
-        :local data {
+        :set data {
             "clientInfo"=$topClientInfo;
             "osVersion"=[/system resource get version];
             "hardwareMake"=[/system resource get platform];
             "hardwareModel"=[/system resource get board-name];
             "hardwareCpuInfo"=[/system resource get cpu];
             "osBuildDate"=[$rosTimestringSec [/system resource get build-time]];
-            "fw"=$topClientInfo;
-            "interfaces"=$interfaces;
             "hostname"=[/system identity get name];
             "os"=[/system package get 0 name];
             "wirelessConfigured"=$1;
             "webshellSupport"=true;
             "firmwareUpgradeSupport"=true;
             "wirelessSupport"=true;
-            "bandwidthTestSupport"=true
+            "interfaces"=$interfaces;
+            "bandwidthTestSupport"=true;
+            "fw"=$topClientInfo
         };
         :local json [$toJson $data];
         :log info "Configs body json created with success (getAllConfigsFigs function -> true).";
@@ -118,25 +122,29 @@
 #       :put [$loginIsOk] \\ result: true/false
 :global loginIsOk do={
     # check if login and password are correct
-    :global loginIsOkLastCheck $loginIsOkLastCheck;
-    if (!any $loginIsOkLastCheck) do={
-        :global loginIsOkLastCheck ([$getTimestamp]->"current");
-    } else={
-        :local difft ([$getTimestamp s $loginIsOkLastCheck]->"diff") ;
-        if ($difft < -30) do={
-            :return $loginIsOkLastCheckvalue;
-        } 
-    }
-    :if (any $TopVariablesDiagnose) do={
-        :local resTopCheck [$TopVariablesDiagnose];
-        :log info [:tostr $resTopCheck]
-    }
-    :global loginIsOkLastCheckvalue $loginIsOkLastCheckvalue;
+    # :global loginIsOkLastCheck $loginIsOkLastCheck;
+    # if (!any $loginIsOkLastCheck) do={
+    #     :global loginIsOkLastCheck ([$getTimestamp]->"current");
+    # } else={
+    #     :local difft ([$getTimestamp s $loginIsOkLastCheck]->"diff") ;
+    #     if ($difft < -30) do={
+    #         :return $loginIsOkLastCheckvalue;
+    #     } 
+    # }
+    # :if (any $TopVariablesDiagnose) do={
+    #     :local resTopCheck [$TopVariablesDiagnose];
+    #     :log info [:tostr $resTopCheck]
+    # }
+    :global loginIsOkLastCheckvalue;
+    :global topDomain;
+    :global topListenerPort;
+    :global login;
+    :global topKey;
     if (!any $loginIsOkLastCheckvalue) do={
-        :set loginIsOkLastCheckvalue true;
+        :set loginIsOkLastCheckvalue false;
     }
     :do {
-        :set loginIsOkLastCheck ([$getTimestamp]->"current");
+        # :set loginIsOkLastCheck ([$getTimestamp]->"current");
         :local res [/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value];
         :set loginIsOkLastCheckvalue ($res->"status" = "finished");
         :log info "check if login and password are correct completed with responce: $loginIsOkLastCheckvalue";

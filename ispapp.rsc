@@ -25,7 +25,7 @@
 
 :put "Download and import ispappDiagnoseConnection.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappDiagnoseConnection.rsc" dst-path="ispappDiagnoseConnection.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappDiagnoseConnection.rsc" dst-path="ispappDiagnoseConnection.rsc"
   /import ispappDiagnoseConnection.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappDiagnoseConnection.rsc"; :delay 1s}
@@ -39,28 +39,28 @@
 
 :put "Download and import ispappFunctions.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappFunctions.rsc" dst-path="ispappFunctions.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappFunctions.rsc" dst-path="ispappFunctions.rsc"
   /import ispappFunctions.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappFunctions.rsc"; :delay 1s}
 
 :put "Download and import ispappPingCollector.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappPingCollector.rsc" dst-path="ispappPingCollector.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappPingCollector.rsc" dst-path="ispappPingCollector.rsc"
   /import ispappPingCollector.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappPingCollector.rsc"; :delay 1s}
 
 :put "Download and import ispappLteCollector.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappLteCollector.rsc" dst-path="ispappLteCollector.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLteCollector.rsc" dst-path="ispappLteCollector.rsc"
   /import ispappLteCollector.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappLteCollector.rsc"; :delay 1s}
 
 :put "Download and import ispappCollectors.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappCollectors.rsc" dst-path="ispappCollectors.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappCollectors.rsc" dst-path="ispappCollectors.rsc"
   /import ispappCollectors.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappCollectors.rsc"; :delay 1s}
@@ -74,24 +74,17 @@
 
 :put "ispappUpdate.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappUpdate.rsc" dst-path="ispappUpdate.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappUpdate.rsc" dst-path="ispappUpdate.rsc"
   /import ispappUpdate.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappUpdate.rsc"; :delay 1s}
 
 :put "ispappAvgCpuCollector.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappAvgCpuCollector.rsc" dst-path="ispappAvgCpuCollector.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappAvgCpuCollector.rsc" dst-path="ispappAvgCpuCollector.rsc"
   /import ispappAvgCpuCollector.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappAvgCpuCollector.rsc"; :delay 1s}
-
-:put "ispappRemoveFiles.rsc"
-:do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappRemoveFiles.rsc" dst-path="ispappRemoveFiles.rsc"
-  /import ispappRemoveFiles.rsc
-  :delay 3s
-} on-error={:put "Error fetching ispappRemoveFiles.rsc"; :delay 1s}
 
 /system script add name=ispappLastConfigChangeTsMs;
 /system script set "ispappLastConfigChangeTsMs" source=":global lastConfigChangeTsMs; :set lastConfigChangeTsMs $lcf;";

@@ -1,7 +1,8 @@
 # 2023-11-07 16:10:26
 /system script
 add dont-require-permissions=no name=ispappConfig owner=admin policy=\
-    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\\_Router Setup Config\r\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
+    \_Router Setup Config\r\
     \n# - sending device details to host (interfaces, branding, versions ..)\r\
     \n# - apply any configurations received from the host as setup stage\r\
     \n:global startEncode 1;\r\
@@ -96,22 +97,21 @@ add dont-require-permissions=no name=ispappConfig owner=admin policy=\
     \n:if ([:len [/system/script/find where name~\"ispappLibrary\"]] = 0) do={\
     \r\
     \n  :put \"Download and import ispappLibrary.rsc\"\r\
-    \n  /system/script/remove [/system/script/find where name~\"ispappLibrary\
-    \"]\r\
-    \n  /file/remove [/file/find where name~\"ispappLibrary\"]\r\
     \n  :do {\r\
     \n    /tool fetch url=\"https://raw.githubusercontent.com/ispapp/ispapp-ro\
     uteros-agent/karim/ispappLibrary.rsc\" dst-path=\"ispappLibrary.rsc\"\r\
     \n    /import ispappLibrary.rsc\r\
     \n    :delay 3s\r\
+    \n    /system/script/run ispappLibraryV1\r\
+    \n    /system/script/run ispappLibraryV2\r\
     \n  } on-error={:put \"Error fetching ispappLibrary.rsc\"; :delay 1s}\r\
     \n} else={\r\
     \n  :foreach id in=[/system/script/find where name~\"ispappLibrary\"] do={\
     \_/system/script/run \$id } \r\
     \n}\r\
     \n:if (any \$login) do={\r\
-    \n  :put [\$TopVariablesDiagnose];\r\
     \n  :put [\$prepareSSL];\r\
+    \n  :put [\$TopVariablesDiagnose];\r\
     \n}\r\
     \n# run configs syncronisations.\r\
     \n:if (any \$WirelessInterfacesConfigSync) do={\r\
