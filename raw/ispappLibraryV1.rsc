@@ -19,12 +19,12 @@
         # get configuration from the server
         :do {
             :global ispappHTTPClient;
-            :local res { "host"={ "Authed"="false" } };
+            :local res { "host"={ "Authed"=false } };
             :local i 0;
             :if ([$ispappHTTPClient m="get" a="update"]->"status"  = false) do={
                 :return { "responce"="firt time config of server error"; "status"=false };
             }
-            :while ((($res->"host"->"Authed") != true && (!any[:find [:tostr $res] "Err.Raise"])) || $i > 5 ) do={
+            :while ((($res->"host"->"Authed") != true && (!any[:find [:tostr $res] "Err.Raise"])) || $i > 2 ) do={
                 :set res ([$ispappHTTPClient m="get" a="config"]->"parsed");
                 :set i ($i + 1);
             }
@@ -224,6 +224,8 @@
 :global prepareSSL do={
     :global ntpStatus false;
     :global caStatus false;
+    :global topDomain;
+    :global topListenerPort;
     # refrechable ssl state (each time u call [$sslIsOk] a new value will be returned)
     :local sslIsOk do={
         :do {
@@ -232,12 +234,19 @@
             :return false;
         }
     };
-    if ([$sslIsOk]) do={
+    :local certs [/certificate/find where name~"ispapp" trusted=yes];
+    if ([:len $certs] > 0) do={
         :return {
             "ntpStatus"=true;
             "caStatus"=true
         };
     } else={
+        :if ([$sslIsOk]) do={
+            :return {
+                "ntpStatus"=true;
+                "caStatus"=true
+            };
+        }
         # Check NTP Client Status
         if ([/system ntp client get status] = "synchronized") do={
             :set ntpStatus true;
@@ -372,6 +381,10 @@
     :global topListenerPort;
     :local refreched do={:return {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login}};
     :local res {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login};
+    # try recover the cridentials from the file if exist.
+    :if ([:len [/file find name=ispapp_cridentials]] > 0) do={
+        [[:parse [/file get [/file find where name~"ispapp_cridentials"] contents]]]
+    }
     # Check if topListenerPort is not set and assign a default value if not set
     :if (!any $topListenerPort) do={
       :global topListenerPort 8550;

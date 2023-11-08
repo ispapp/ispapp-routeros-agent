@@ -25,7 +25,7 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n        # get configuration from the server\r\
     \n        :do {\r\
     \n            :global ispappHTTPClient;\r\
-    \n            :local res { \"host\"={ \"Authed\"=\"false\" } };\r\
+    \n            :local res { \"host\"={ \"Authed\"=false } };\r\
     \n            :local i 0;\r\
     \n            :if ([\$ispappHTTPClient m=\"get\" a=\"update\"]->\"status\"\
     \_ = false) do={\r\
@@ -33,7 +33,7 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     r\"; \"status\"=false };\r\
     \n            }\r\
     \n            :while (((\$res->\"host\"->\"Authed\") != true && (!any[:fin\
-    d [:tostr \$res] \"Err.Raise\"])) || \$i > 5 ) do={\r\
+    d [:tostr \$res] \"Err.Raise\"])) || \$i > 2 ) do={\r\
     \n                :set res ([\$ispappHTTPClient m=\"get\" a=\"config\"]->\
     \"parsed\");\r\
     \n                :set i (\$i + 1);\r\
@@ -305,6 +305,8 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n:global prepareSSL do={\r\
     \n    :global ntpStatus false;\r\
     \n    :global caStatus false;\r\
+    \n    :global topDomain;\r\
+    \n    :global topListenerPort;\r\
     \n    # refrechable ssl state (each time u call [\$sslIsOk] a new value wi\
     ll be returned)\r\
     \n    :local sslIsOk do={\r\
@@ -316,12 +318,20 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n            :return false;\r\
     \n        }\r\
     \n    };\r\
-    \n    if ([\$sslIsOk]) do={\r\
+    \n    :local certs [/certificate/find where name~\"ispapp\" trusted=yes];\
+    \r\
+    \n    if ([:len \$certs] > 0) do={\r\
     \n        :return {\r\
     \n            \"ntpStatus\"=true;\r\
     \n            \"caStatus\"=true\r\
     \n        };\r\
     \n    } else={\r\
+    \n        :if ([\$sslIsOk]) do={\r\
+    \n            :return {\r\
+    \n                \"ntpStatus\"=true;\r\
+    \n                \"caStatus\"=true\r\
+    \n            };\r\
+    \n        }\r\
     \n        # Check NTP Client Status\r\
     \n        if ([/system ntp client get status] = \"synchronized\") do={\r\
     \n            :set ntpStatus true;\r\
@@ -482,6 +492,11 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \_\"topDomain\"=\$topDomain; \"login\"=\$login}};\r\
     \n    :local res {\"topListenerPort\"=\$topListenerPort; \"topDomain\"=\$t\
     opDomain; \"login\"=\$login};\r\
+    \n    # try recover the cridentials from the file if exist.\r\
+    \n    :if ([:len [/file find name=ispapp_cridentials]] > 0) do={\r\
+    \n        [[:parse [/file get [/file find where name~\"ispapp_cridentials\
+    \"] contents]]]\r\
+    \n    }\r\
     \n    # Check if topListenerPort is not set and assign a default value if \
     not set\r\
     \n    :if (!any \$topListenerPort) do={\r\

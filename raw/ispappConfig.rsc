@@ -3,12 +3,16 @@
 # - apply any configurations received from the host as setup stage
 :global startEncode 1;
 :global isSend 1;
-:global topKey $topKey;
-:global topDomain $topDomain;
-:global topClientInfo $topClientInfo;
-:global topListenerPort $topListenerPort;
-:global topServerPort $topServerPort;
-:global topSmtpPort $topSmtpPort;
+:global topKey;
+:global topDomain;
+:global topClientInfo;
+:global topListenerPort;
+:global topServerPort;
+:global topSmtpPort;
+:global WirelessInterfacesConfigSync;
+:global TopVariablesDiagnose;
+:global prepareSSL;
+:global login;
 
 # setup email server
 /tool e-mail set address=($topDomain);
@@ -67,6 +71,27 @@
     }
     :return {upper=$outputupper; lower=$outputlower};
 }
+
+# save important variables to be used after for recovery in case it's overrided of lost.
+:do {
+  :if ([:len [/file find name=ispapp_cridentials]] > 0) do={
+    /file remove [/file find name=ispapp_cridentials]
+  }
+  :local cridentials "\r\
+    \n:global topKey $topKey;\r\
+    \n:global topDomain $topDomain;\r\
+    \n:global topClientInfo $topClientInfo;\r\
+    \n:global topListenerPort $topListenerPort;\r\
+    \n:global topServerPort $topServerPort;\r\
+    \n:global topSmtpPort $topSmtpPort;\r\
+    \n:global ipbandswtestserver $ipbandswtestserver;\r\
+    \n:global btuser $btuser;\r\
+    \n:global btpwd $btpwd;";
+  /file add name=ispapp_cridentials contents=$cridentials
+} on-error={
+  :log error "faild to save cridentials!";
+}
+
 :global login "00:00:00:00:00:00";
 :if ([:len $l] > 0) do={
 :set login ([$strcaseconv $l]->"lower");

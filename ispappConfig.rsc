@@ -7,12 +7,16 @@ add dont-require-permissions=no name=ispappConfig owner=admin policy=\
     \n# - apply any configurations received from the host as setup stage\r\
     \n:global startEncode 1;\r\
     \n:global isSend 1;\r\
-    \n:global topKey \$topKey;\r\
-    \n:global topDomain \$topDomain;\r\
-    \n:global topClientInfo \$topClientInfo;\r\
-    \n:global topListenerPort \$topListenerPort;\r\
-    \n:global topServerPort \$topServerPort;\r\
-    \n:global topSmtpPort \$topSmtpPort;\r\
+    \n:global topKey;\r\
+    \n:global topDomain;\r\
+    \n:global topClientInfo;\r\
+    \n:global topListenerPort;\r\
+    \n:global topServerPort;\r\
+    \n:global topSmtpPort;\r\
+    \n:global WirelessInterfacesConfigSync;\r\
+    \n:global TopVariablesDiagnose;\r\
+    \n:global prepareSSL;\r\
+    \n:global login;\r\
     \n\r\
     \n# setup email server\r\
     \n/tool e-mail set address=(\$topDomain);\r\
@@ -83,6 +87,28 @@ add dont-require-permissions=no name=ispappConfig owner=admin policy=\
     \n    }\r\
     \n    :return {upper=\$outputupper; lower=\$outputlower};\r\
     \n}\r\
+    \n\r\
+    \n# save important variables to be used after for recovery in case it's ov\
+    errided of lost.\r\
+    \n:do {\r\
+    \n  :if ([:len [/file find name=ispapp_cridentials]] > 0) do={\r\
+    \n    /file remove [/file find name=ispapp_cridentials]\r\
+    \n  }\r\
+    \n  :local cridentials \"\\r\\\r\
+    \n    \\n:global topKey \$topKey;\\r\\\r\
+    \n    \\n:global topDomain \$topDomain;\\r\\\r\
+    \n    \\n:global topClientInfo \$topClientInfo;\\r\\\r\
+    \n    \\n:global topListenerPort \$topListenerPort;\\r\\\r\
+    \n    \\n:global topServerPort \$topServerPort;\\r\\\r\
+    \n    \\n:global topSmtpPort \$topSmtpPort;\\r\\\r\
+    \n    \\n:global ipbandswtestserver \$ipbandswtestserver;\\r\\\r\
+    \n    \\n:global btuser \$btuser;\\r\\\r\
+    \n    \\n:global btpwd \$btpwd;\";\r\
+    \n  /file add name=ispapp_cridentials contents=\$cridentials\r\
+    \n} on-error={\r\
+    \n  :log error \"faild to save cridentials!\";\r\
+    \n}\r\
+    \n\r\
     \n:global login \"00:00:00:00:00:00\";\r\
     \n:if ([:len \$l] > 0) do={\r\
     \n:set login ([\$strcaseconv \$l]->\"lower\");\r\
