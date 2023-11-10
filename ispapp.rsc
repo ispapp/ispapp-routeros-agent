@@ -76,7 +76,7 @@
   :global btpwd;
   :global login;
   :global librarylastversion;
-  /system/script/remove ispapp_credentials
+  /system/script/remove [/system/script/find name~"ispapp_credentials"]
   :local cridentials "\n:global topKey $topKey;\r\
     \n:global topDomain $topDomain;\r\
     \n:global topClientInfo $topClientInfo;\r\
