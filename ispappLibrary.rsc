@@ -1,4 +1,4 @@
-# 2023-11-08 01:35:45 by RouterOS
+# 2023-11-10 18:14:51
 /system script
 add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
@@ -25,15 +25,15 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n        # get configuration from the server\r\
     \n        :do {\r\
     \n            :global ispappHTTPClient;\r\
-    \n            :local res { \"host\"={ \"Authed\"=false } };\r\
+    \n            :local res;\r\
     \n            :local i 0;\r\
     \n            :if ([\$ispappHTTPClient m=\"get\" a=\"update\"]->\"status\"\
-    \_ = false) do={\r\
+    \_= false) do={\r\
     \n                :return { \"responce\"=\"firt time config of server erro\
     r\"; \"status\"=false };\r\
     \n            }\r\
-    \n            :while (((\$res->\"host\"->\"Authed\") != true && (!any[:fin\
-    d [:tostr \$res] \"Err.Raise\"])) || \$i > 2 ) do={\r\
+    \n            :while ((any[:find [:tostr \$res] \"Err.Raise\"] || !any\$re\
+    s) && \$i < 3) do={\r\
     \n                :set res ([\$ispappHTTPClient m=\"get\" a=\"config\"]->\
     \"parsed\");\r\
     \n                :set i (\$i + 1);\r\
@@ -45,9 +45,14 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n                :return {\"status\"=false; \"message\"=\"error while get\
     ting config (Err.Raise fJSONLoads)\"};\r\
     \n            } else={\r\
-    \n                :log info \"check id json received is valid and redy to \
-    be used with responce: \$res\";\r\
-    \n                :return { \"responce\"=\$res; \"status\"=true };\r\
+    \n                :if (\$res->\"host\"->\"Authed\" != true) do={\r\
+    \n                    :log error [:tostr \$res];\r\
+    \n                    :return {\"status\"=false; \"message\"=\$res};\r\
+    \n                } else={\r\
+    \n                    :log info \"check id json received is valid and redy\
+    \_to be used with responce: \$res\";\r\
+    \n                    :return { \"responce\"=\$res; \"status\"=true };\r\
+    \n                }\r\
     \n            }\r\
     \n        } on-error={\r\
     \n            :log error \"error while getting config (Err.Raise fJSONLoad\
@@ -121,29 +126,31 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \_host\r\
     \n        # get security profile with same password as the one on first ar\
     gument \$1\r\
-    \n        :local SyncSecProfile do={\r\
+    \n        :global SyncSecProfile do={\r\
     \n            # add security profile if not found\r\
     \n            :do {\r\
-    \n                :local tempName (\"ispapp_\" . (\$1->\"ssid\"));\r\
-    \n                :local currentProfilesAtPassword [:parse \"/interface/wi\
-    reless/security-profiles/print as-value where wpa-pre-shared-key=\\\$1\"];\
-    \r\
-    \n                :local foundSecProfiles [\$currentProfilesAtPassword \$t\
-    empName];\r\
+    \n                :local key (\$1->\"encKey\");\r\
+    \n                # search for profile with this same password if exist if\
+    \_not just create it.\r\
+    \n                :local currentProfilesAtPassword do={\r\
+    \n                    :local currentprfwpa2 [:parse \"/interface/wireless/\
+    security-profiles/print as-value where wpa2-pre-shared-key=\\\$1\"];\r\
+    \n                    :local currentprfwpa [:parse \"/interface/wireless/s\
+    ecurity-profiles/print as-value where wpa-pre-shared-key=\\\$1\"];\r\
+    \n                    :local secpp2 [\$currentprfwpa2 \$1];\r\
+    \n                    :local secpp [\$currentprfwpa \$1];\r\
+    \n                    :if ([:len \$secpp2] > 0) do={\r\
+    \n                        :return \$secpp2;\r\
+    \n                    } else={\r\
+    \n                        :return \$secpp;\r\
+    \n                    }\r\
+    \n                };\r\
+    \n                # todo: separation of sec profiles ....\r\
+    \n                :local foundSecProfiles [\$currentProfilesAtPassword \$k\
+    ey]; # error \r\
     \n                :log info \"add security profile if not found: \$tempNam\
     e\";\r\
-    \n                :local updateSec  [:parse \"/interface wireless security\
-    -profiles set \\\$3 \\\\\r\
-    \n                    wpa-pre-shared-key=\\\$1 \\\\\r\
-    \n                    wpa2-pre-shared-key=\\\$1 \\\\\r\
-    \n                    authentication-types=\\\$2\"];\r\
     \n                if ([:len \$foundSecProfiles] > 0) do={\r\
-    \n                    :local thisencTypeFormated [\$formatAuthTypes (\$1->\
-    \"encType\")];\r\
-    \n                    :local thisfoundSecProfiles (\$foundSecProfiles->0->\
-    \".id\");\r\
-    \n                    [\$updateSec (\$1->\"encKey\") \$thisencTypeFormated\
-    \_\$thisfoundSecProfiles];\r\
     \n                    :return (\$foundSecProfiles->0->\"name\");\r\
     \n                } else={\r\
     \n                     :local addSec  [:parse \"/interface wireless securi\
@@ -155,10 +162,8 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \r\
     \n                        wpa-pre-shared-key=(\\\$1->\\\"encKey\\\") \\\\\
     \r\
-    \n                        authentication-types=(\\\$1->\\\"encTypeFormated\
-    \\\")\"];\r\
-    \n                    [\$addSec (\$1 + {\"encTypeFormated\"=[\$formatAuthT\
-    ypes (\$1->\"encType\")]})];\r\
+    \n                        authentication-types=wpa2-psk,wpa-psk\"];\r\
+    \n                    :put [\$addSec \$1];\r\
     \n                    :return \$tempName;\r\
     \n                }\r\
     \n            } on-error={\r\
@@ -169,15 +174,16 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     me];\r\
     \n            }\r\
     \n        }\r\
+    \n        :global convertToValidFormat;\r\
     \n        ## start comparing local and remote configs\r\
     \n        foreach conf in=\$wirelessConfigs do={\r\
     \n            :log info \"## start comparing local and remote configs ##\"\
     ;\r\
     \n            :local existedinterf [/interface/wireless/find ssid=(\$conf-\
     >\"ssid\")];\r\
+    \n            :local newSecProfile [\$SyncSecProfile \$conf];\r\
     \n            if ([:len \$existedinterf] = 0) do={\r\
     \n                # add new interface\r\
-    \n                :local newSecProfile [\$SyncSecProfile \$conf];\r\
     \n                :local NewInterName (\"ispapp_\" . [\$convertToValidForm\
     at (\$conf->\"ssid\")]);\r\
     \n                :local masterinterface [/interface/wireless/get ([/inter\
@@ -193,8 +199,11 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n                    master-interface=\\\$masterinterface \\\\\r\
     \n                    name=(\\\$1->\\\"NewInterName\\\") \\\\\r\
     \n                    disabled=no;\"];\r\
-    \n                [\$addInter (\$conf + {\"newSecProfile\"=\$newSecProfile\
-    ; \"NewInterName\"=\$NewInterName})];\r\
+    \n                :local newinterface (\$conf + {\"newSecProfile\"=\$newSe\
+    cProfile; \"NewInterName\"=\$NewInterName});\r\
+    \n                :log debug (\"new interface details \\n\" . [:tostr \$ne\
+    winterface]);\r\
+    \n                :put [\$addInter \$newinterface];\r\
     \n                :delay 3s; # wait for interface to be created\r\
     \n                :log info \"## wait for interface to be created 3s ##\";\
     \r\
@@ -260,17 +269,49 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n                \"ssid\"=([/interface/wireless/get \$interfaceid ssid]);\
     \r\
     \n                \"key\"=([/interface/wireless/security-profile get [/int\
-    erface/wireless/get \$interfaceid security-profile] wpa-pre-shared-key]);\
+    erface/wireless/get \$interfaceid security-profile] wpa2-pre-shared-key]);\
     \r\
     \n                \"keytypes\"=([\$joinArray [\$getkeytypes \$interfaceid]\
-    \_\",\"])\r\
+    \_\",\"]);\r\
+    \n                \"interface-type\"=([/interface/wireless/get \$interface\
+    id interface-type]);\r\
+    \n                \"security_profile\"=([/interface/wireless/get \$interfa\
+    ceid security-profile])\r\
+    \n            };\r\
+    \n        };\r\
+    \n        :local SecProfileslocalConfigs; \r\
+    \n        :foreach k,secid in=[/interface/wireless/security-profile find] \
+    do={\r\
+    \n            :set (\$SecProfileslocalConfigs->\$k) {\r\
+    \n                \"name\"=([/interface/wireless/security-profile get \$se\
+    cid name]);\r\
+    \n                \"authentication-types\"=([/interface/wireless/security-\
+    profile get \$secid authentication-types]);\r\
+    \n                \"wpa2-pre-shared-key\"=([/interface/wireless/security-p\
+    rofile get \$secid wpa2-pre-shared-key]);\r\
+    \n                \"wpa-pre-shared-key\"=([/interface/wireless/security-pr\
+    ofile get \$secid wpa-pre-shared-key]);\r\
+    \n                \"eap-methods\"=([/interface/wireless/security-profile g\
+    et \$secid eap-methods]);\r\
+    \n                \"mode\"=([/interface/wireless/security-profile get \$se\
+    cid mode]);\r\
+    \n                \"default\"=([/interface/wireless/security-profile get \
+    \$secid default])\r\
     \n            };\r\
     \n        };\r\
     \n        :local sentbody \"{}\";\r\
     \n        :local message (\"uploading \" . [:len \$InterfaceslocalConfigs]\
     \_. \" interfaces to ispapp server\");\r\
-    \n        :set sentbody ([\$getAllConfigs \$InterfaceslocalConfigs]->\"jso\
-    n\");\r\
+    \n        :if ([:len \$InterfaceslocalConfigs] = 0) do={\r\
+    \n            :set InterfaceslocalConfigs \"[]\";\r\
+    \n        }\r\
+    \n        :if ([:len \$SecProfileslocalConfigs] = 0) do={\r\
+    \n            :set SecProfileslocalConfigs \"[]\";\r\
+    \n        }\r\
+    \n        :global getAllConfigs;\r\
+    \n        :global ispappHTTPClient;\r\
+    \n        :set sentbody ([\$getAllConfigs \$InterfaceslocalConfigs \$SecPr\
+    ofileslocalConfigs]->\"json\");\r\
     \n        :local returned  [\$ispappHTTPClient m=post a=config b=\$sentbod\
     y];\r\
     \n        :return (\$output+{\r\
@@ -485,11 +526,20 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n:global TopVariablesDiagnose do={\r\
     \n    :global topDomain;\r\
     \n    :global topKey;\r\
+    \n    :global login;\r\
     \n    :global topSmtpPort;\r\
     \n    :global rosMajorVersion;\r\
     \n    :global topListenerPort;\r\
-    \n    :local refreched do={:return {\"topListenerPort\"=\$topListenerPort;\
-    \_\"topDomain\"=\$topDomain; \"login\"=\$login}};\r\
+    \n    :local refreched do={\r\
+    \n        :global topDomain;\r\
+    \n        :global topKey;\r\
+    \n        :global login;\r\
+    \n        :global topSmtpPort;\r\
+    \n        :global rosMajorVersion;\r\
+    \n        :global topListenerPort;\r\
+    \n        :return {\"topListenerPort\"=\$topListenerPort; \"topDomain\"=\$\
+    topDomain; \"login\"=\$login}\r\
+    \n    };\r\
     \n    :local res {\"topListenerPort\"=\$topListenerPort; \"topDomain\"=\$t\
     opDomain; \"login\"=\$login};\r\
     \n    # try recover the cridentials from the file if exist.\r\
@@ -534,40 +584,6 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n            :log info [\$settls];\r\
     \n        }\r\
     \n    }\r\
-    \n    # Check if login is not set and assign a default value as the MikroT\
-    ik MAC address\r\
-    \n    :if (!any \$login) do={\r\
-    \n      :do {\r\
-    \n        :global login ([/interface get [find default-name=wlan1] mac-add\
-    ress]);\r\
-    \n        :set res [\$refreched];\r\
-    \n      } on-error={\r\
-    \n        :do {\r\
-    \n          :global login ([/interface get [find default-name=ether1] mac-\
-    address]);\r\
-    \n          :set res [\$refreched];\r\
-    \n        } on-error={\r\
-    \n            :do {\r\
-    \n                :global login ([/interface get [find default-name=sfp-sf\
-    pplus1] mac-address]);\r\
-    \n                :set res [\$refreched];\r\
-    \n            } on-error={\r\
-    \n                :do {\r\
-    \n                    :global login ([/interface get [find default-name=lt\
-    e1] mac-address]);\r\
-    \n                    :set res [\$refreched];\r\
-    \n                } on-error={\r\
-    \n                    :log info (\"No Interface MAC Address found to use a\
-    s ISPApp login, default-name=wlan1, ether1, sfp-sfpplus1 or lte1 must exis\
-    t.\");\r\
-    \n                    :set res [\$refreched];\r\
-    \n                }\r\
-    \n            }\r\
-    \n        }\r\
-    \n    }\r\
-    \n    :global login \$login;\r\
-    \n    :set login ([\$strcaseconv \$login]->\"lower\");\r\
-    \n  }\r\
     \n  :return \$res;\r\
     \n}\r\
     \n\r\
@@ -742,6 +758,7 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n        :set certCheck \"yes\";\r\
     \n        :log info \"ssl preparation is completed with success!\";\r\
     \n    }\r\
+    \n    \r\
     \n    if (!any \$m) do={\r\
     \n        :local method \"get\";\r\
     \n    }\r\
@@ -754,25 +771,28 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     \n    }\r\
     \n    # check if key was provided if not run ispappSet\r\
     \n    if (!any \$topKey) do={\r\
-    \n        :global topKey; \r\
+    \n        :set topKey; \r\
     \n    }\r\
     \n    # Check if topListenerPort is not set and assign a default value if \
     not set\r\
     \n    :if (!any \$topListenerPort) do={\r\
-    \n        :global topListenerPort 8550;\r\
+    \n        :set topListenerPort 8550;\r\
     \n    }\r\
     \n    # Check if topDomain is not set and assign a default value if not se\
     t\r\
     \n    :if (!any \$topDomain) do={\r\
-    \n        :global topDomain \"qwer.ispapp.co\";\r\
+    \n        :set topDomain \"qwer.ispapp.co\";\r\
     \n    }\r\
     \n    # Check certificates\r\
     \n    # Make request\r\
     \n    :local out;\r\
     \n    :local requesturl;\r\
     \n    :do {\r\
+    \n        :global login;\r\
     \n        :set requesturl \"https://\$topDomain:\$topListenerPort/\$action\
     \?login=\$login&key=\$topKey\";\r\
+    \n        :log info \"Request details: \\n\\t\$requesturl \\n\\t http-meth\
+    od=\\\"\$m\\\" \\n\\t http-data=\\\"\$b\\\"\";\r\
     \n        if (!any \$b) do={\r\
     \n            :set out [/tool fetch url=\$requesturl check-certificate=\$c\
     ertCheck http-method=\$m output=user as-value];\r\
@@ -783,6 +803,7 @@ add dont-require-permissions=no name=ispappLibraryV1 owner=admin policy=\
     r as-value];\r\
     \n        }\r\
     \n        if (\$out->\"status\" = \"finished\") do={\r\
+    \n            :global JSONLoads;\r\
     \n            :local parses [\$JSONLoads (\$out->\"data\")];\r\
     \n            :return { \"status\"=true; \"response\"=(\$out->\"data\"); \
     \"parsed\"=\$parses; \"requestUrl\"=\$requesturl };\r\
@@ -915,6 +936,7 @@ add dont-require-permissions=no name=ispappLibraryV2 owner=admin policy=\
     \n            \"firmwareUpgradeSupport\"=true;\r\
     \n            \"wirelessSupport\"=true;\r\
     \n            \"interfaces\"=\$interfaces;\r\
+    \n            \"security-profiles\"=\$2;\r\
     \n            \"bandwidthTestSupport\"=true;\r\
     \n            \"fw\"=\$topClientInfo\r\
     \n        };\r\
@@ -974,6 +996,39 @@ add dont-require-permissions=no name=ispappLibraryV2 owner=admin policy=\
     \n        :return \$loginIsOkLastCheckvalue;\r\
     \n    }\r\
     \n};\r\
+    \n# a function to persist variables in a script called ispapp_credentials\
+    \r\
+    \n:global savecredentials do={\r\
+    \n  :global topKey;\r\
+    \n  :global topDomain;\r\
+    \n  :global topClientInfo;\r\
+    \n  :global topListenerPort;\r\
+    \n  :global topServerPort;\r\
+    \n  :global topSmtpPort;\r\
+    \n  :global txAvg;\r\
+    \n  :global rxAvg;\r\
+    \n  :global ipbandswtestserver;\r\
+    \n  :global btuser;\r\
+    \n  :global btpwd;\r\
+    \n  :global librarylastversion;\r\
+    \n  /system/script/remove [/system/script/find where name~\"ispapp_credent\
+    ials\"]\r\
+    \n  :local cridentials \"\\n:global topKey \$topKey;\\r\\\r\
+    \n    \\n:global topDomain \$topDomain;\\r\\\r\
+    \n    \\n:global topClientInfo \$topClientInfo;\\r\\\r\
+    \n    \\n:global topListenerPort \$topListenerPort;\\r\\\r\
+    \n    \\n:global topServerPort \$topServerPort;\\r\\\r\
+    \n    \\n:global topSmtpPort \$topSmtpPort;;\r\
+    \n    \\n:global txAvg 0;\\r\\\r\
+    \n    \\n:global rxAvg 0;\\r\\\r\
+    \n    \\n:global ipbandswtestserver \$ipbandswtestserver;\\r\\\r\
+    \n    \\n:global btuser \$btuser;\\r\\\r\
+    \n    \\n:global librarylastversion \$librarylastversion;\\r\\\r\
+    \n    \\n:global btpwd \$btpwd;\"\r\
+    \n  /system/script/add name=ispapp_credentials source=\$cridentials\r\
+    \n  :log info \"ispapp_credentials updated!\";\r\
+    \n  :return \"ispapp_credentials updated!\";\r\
+    \n}\r\
     \n:put \"\\t V2 Library loaded! (;\";\r\
     \n# Function to send updates to host\r\
     \n# usage: \r\

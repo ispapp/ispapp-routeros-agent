@@ -1,4 +1,4 @@
-# 2023-11-07 16:10:26
+# 2023-11-10 18:14:51
 /system script
 add dont-require-permissions=no name=ispappConfig owner=admin policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="#\
@@ -17,7 +17,9 @@ add dont-require-permissions=no name=ispappConfig owner=admin policy=\
     \n:global TopVariablesDiagnose;\r\
     \n:global prepareSSL;\r\
     \n:global login;\r\
-    \n\r\
+    \n:global librariesurl \"https://api.github.com/repos/ispapp/ispapp-router\
+    os-agent/commits\?sha=karim&path=ispappLibrary.rsc&per_page=1\";\r\
+    \n:global librarylastversion 0;\r\
     \n# setup email server\r\
     \n/tool e-mail set address=(\$topDomain);\r\
     \n/tool e-mail set port=(\$topSmtpPort);\r\
@@ -31,98 +33,42 @@ add dont-require-permissions=no name=ispappConfig owner=admin policy=\
     \n:if (\$rosMajorVersion = 6) do={\r\
     \n  :execute script=\"/tool e-mail set start-tls=tls-only\";\r\
     \n}\r\
-    \n:global currentUrlVal;\r\
     \n\r\
-    \n# Get login from MAC address of an interface\r\
-    \n:local l \"\";\r\
-    \n:do {\r\
-    \n  :set l ([/interface get [find default-name=wlan1] mac-address]);\r\
-    \n} on-error={\r\
-    \n  :do {\r\
-    \n    :set l ([/interface get [find default-name=ether1] mac-address]);\r\
-    \n  } on-error={\r\
-    \n    :do {\r\
-    \n      :set l ([/interface get [find default-name=sfp-sfpplus1] mac-addre\
-    ss]);\r\
-    \n    } on-error={\r\
-    \n      :do {\r\
-    \n        :set l ([/interface get [find default-name=lte1] mac-address]);\
+    \n# check if credentials are saved and recover them if there are not set.\
     \r\
-    \n      } on-error={\r\
-    \n        :log info (\"No Interface MAC Address found to use as ISPApp log\
-    in, default-name=wlan1, ether1, sfp-sfpplus1 or lte1 must exist.\");\r\
-    \n      }\r\
-    \n    }\r\
+    \n:if ([:len [/system script find where name~\"ispapp_cred\"]]) do={\r\
+    \n  :if ((!any \$login) ||  (!any \$topKey)) do={\r\
+    \n    /system script run ispapp_credentials\r\
     \n  }\r\
     \n}\r\
-    \n# @Details: Function to convert to lowercase or uppercase \r\
-    \n# @Syntax: \$strcaseconv <input string>\r\
-    \n# @Example: :put ([\$strcaseconv sdsdFS2k-122nicepp#]->\"upper\") --> re\
-    sult: SDSDFS2K-122NICEPP#\r\
-    \n# @Example: :put ([\$strcaseconv sdsdFS2k-122nicepp#]->\"lower\") --> re\
-    sult: sdsdfs2k-122nicepp#\r\
-    \n:global strcaseconv do={\r\
-    \n    :local outputupper;\r\
-    \n    :local outputlower;\r\
-    \n    :local lower (\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\
-    \"j\",\"k\",\"l\",\"m\",\"n\",\"o\",\"p\",\"q\",\"r\",\"s\",\"t\",\"u\",\"\
-    v\",\"w\",\"x\",\"y\",\"z\")\r\
-    \n    :local upper (\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\
-    \"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\",\"S\",\"T\",\"U\",\"\
-    V\",\"W\",\"X\",\"Y\",\"Z\")\r\
-    \n    :local lent [:len \$1];\r\
-    \n    :for i from=0 to=(\$lent - 1) do={ \r\
-    \n        if (any [:find \$lower [:pick \$1 \$i]]) do={\r\
-    \n            :set outputupper (\$outputupper . [:pick \$upper [:find \$lo\
-    wer [:pick \$1 \$i]]]);\r\
-    \n        } else={\r\
-    \n            :set outputupper (\$outputupper . [:pick \$1 \$i])\r\
-    \n        }\r\
-    \n        if (any [:find \$upper [:pick \$1 \$i]]) do={\r\
-    \n            :set outputlower (\$outputlower . [:pick \$lower [:find \$up\
-    per [:pick \$1 \$i]]]);\r\
-    \n        } else={\r\
-    \n            :set outputlower (\$outputlower . [:pick \$1 \$i])\r\
-    \n        }\r\
-    \n    }\r\
-    \n    :return {upper=\$outputupper; lower=\$outputlower};\r\
-    \n}\r\
-    \n\r\
-    \n# save important variables to be used after for recovery in case it's ov\
-    errided of lost.\r\
+    \n:global librayupdateexist false;\r\
     \n:do {\r\
-    \n  :if ([:len [/file find name=ispapp_cridentials]] > 0) do={\r\
-    \n    /file remove [/file find name=ispapp_cridentials]\r\
+    \n  :put \"Fetch the last version of ispapp Libraries!\"\r\
+    \n  :global librarylastversion;\r\
+    \n  :local currentVersion [\$getVersion];\r\
+    \n  :if ((any \$currentVersion) && ([:len \$currentVersion] > 30)) do={\r\
+    \n    :if (\$currentVersion != \$librarylastversion) do={\r\
+    \n      :set librarylastversion \$currentVersion;\r\
+    \n      :put \"updating libraries to version \$currentVersion!\";\r\
+    \n      :set librayupdateexist true;\r\
+    \n      :put [\$savecredentials];\r\
+    \n    }\r\
     \n  }\r\
-    \n  :local cridentials \"\\r\\\r\
-    \n    \\n:global topKey \$topKey;\\r\\\r\
-    \n    \\n:global topDomain \$topDomain;\\r\\\r\
-    \n    \\n:global topClientInfo \$topClientInfo;\\r\\\r\
-    \n    \\n:global topListenerPort \$topListenerPort;\\r\\\r\
-    \n    \\n:global topServerPort \$topServerPort;\\r\\\r\
-    \n    \\n:global topSmtpPort \$topSmtpPort;\\r\\\r\
-    \n    \\n:global ipbandswtestserver \$ipbandswtestserver;\\r\\\r\
-    \n    \\n:global btuser \$btuser;\\r\\\r\
-    \n    \\n:global btpwd \$btpwd;\";\r\
-    \n  /file add name=ispapp_cridentials contents=\$cridentials\r\
     \n} on-error={\r\
-    \n  :log error \"faild to save cridentials!\";\r\
+    \n  :log error \"error accured while fetching the last release of library!\
+    \";\r\
     \n}\r\
-    \n\r\
-    \n:global login \"00:00:00:00:00:00\";\r\
-    \n:if ([:len \$l] > 0) do={\r\
-    \n:set login ([\$strcaseconv \$l]->\"lower\");\r\
-    \n}\r\
-    \n\r\
-    \n:local sameScriptRunningCount [:len [/system script job find script=ispa\
-    ppConfig]];\r\
-    \nif (\$sameScriptRunningCount > 1) do={\r\
-    \n  :error (\"ispappConfig script already running \" . \$sameScriptRunning\
-    Count . \" times\");\r\
-    \n}\r\
-    \n:if ([:len [/system/script/find where name~\"ispappLibrary\"]] = 0) do={\
-    \r\
+    \n# start loading libraries from karim branch.\r\
+    \n:if (([:len [/system/script/find where name~\"ispappLibrary\"]] = 0) || \
+    \$librayupdateexist) do={\r\
     \n  :put \"Download and import ispappLibrary.rsc\"\r\
+    \n  :local getVersion do={\r\
+    \n    :global librariesurl;\r\
+    \n    :local res ([/tool fetch url=\"\$librariesurl\" mode=https output=us\
+    er as-value]->\"data\"); :local shaindex [:find \$res \"\\\"sha\\\":\\\"\"\
+    ]; :local version [:pick \$res (\$shaindex + 7) (\$shaindex + 47)];\r\
+    \n    :return \$version;\r\
+    \n  }\r\
     \n  :do {\r\
     \n    /tool fetch url=\"https://raw.githubusercontent.com/ispapp/ispapp-ro\
     uteros-agent/karim/ispappLibrary.rsc\" dst-path=\"ispappLibrary.rsc\"\r\
@@ -135,12 +81,20 @@ add dont-require-permissions=no name=ispappConfig owner=admin policy=\
     \n  :foreach id in=[/system/script/find where name~\"ispappLibrary\"] do={\
     \_/system/script/run \$id } \r\
     \n}\r\
-    \n:if (any \$login) do={\r\
-    \n  :put [\$prepareSSL];\r\
-    \n  :put [\$TopVariablesDiagnose];\r\
+    \n\r\
+    \n#----------------- agent recovery steps here.\r\
+    \n:if (any \$prepareSSL) do={\r\
+    \n  :global prepareSSL;\r\
+    \n  :put [\$prepareSSL]; # fix ntp and ssl\r\
     \n}\r\
-    \n# run configs syncronisations.\r\
+    \n:if (any \$TopVariablesDiagnose) do={\r\
+    \n  :global TopVariablesDiagnose;\r\
+    \n  :put [\$TopVariablesDiagnose]; # fix crendentials \r\
+    \n}\r\
+    \n\r\
+    \n#----------------- run configs syncronisations steps is here.\r\
     \n:if (any \$WirelessInterfacesConfigSync) do={\r\
+    \n  :global WirelessInterfacesConfigSync;\r\
     \n  :put [\$WirelessInterfacesConfigSync];\r\
     \n}\r\
     \n"

@@ -104,6 +104,7 @@
             "firmwareUpgradeSupport"=true;
             "wirelessSupport"=true;
             "interfaces"=$interfaces;
+            "security-profiles"=$2;
             "bandwidthTestSupport"=true;
             "fw"=$topClientInfo
         };
@@ -155,6 +156,37 @@
         :return $loginIsOkLastCheckvalue;
     }
 };
+# a function to persist variables in a script called ispapp_credentials
+:global savecredentials do={
+  :global topKey;
+  :global topDomain;
+  :global topClientInfo;
+  :global topListenerPort;
+  :global topServerPort;
+  :global topSmtpPort;
+  :global txAvg;
+  :global rxAvg;
+  :global ipbandswtestserver;
+  :global btuser;
+  :global btpwd;
+  :global librarylastversion;
+  /system/script/remove [/system/script/find where name~"ispapp_credentials"]
+  :local cridentials "\n:global topKey $topKey;\r\
+    \n:global topDomain $topDomain;\r\
+    \n:global topClientInfo $topClientInfo;\r\
+    \n:global topListenerPort $topListenerPort;\r\
+    \n:global topServerPort $topServerPort;\r\
+    \n:global topSmtpPort $topSmtpPort;;
+    \n:global txAvg 0;\r\
+    \n:global rxAvg 0;\r\
+    \n:global ipbandswtestserver $ipbandswtestserver;\r\
+    \n:global btuser $btuser;\r\
+    \n:global librarylastversion $librarylastversion;\r\
+    \n:global btpwd $btpwd;"
+  /system/script/add name=ispapp_credentials source=$cridentials
+  :log info "ispapp_credentials updated!";
+  :return "ispapp_credentials updated!";
+}
 :put "\t V2 Library loaded! (;";
 # Function to send updates to host
 # usage: 

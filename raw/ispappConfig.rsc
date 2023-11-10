@@ -13,7 +13,8 @@
 :global TopVariablesDiagnose;
 :global prepareSSL;
 :global login;
-
+:global librariesurl "https://api.github.com/repos/ispapp/ispapp-routeros-agent/commits?sha=karim&path=ispappLibrary.rsc&per_page=1";
+:global librarylastversion 0;
 # setup email server
 /tool e-mail set address=($topDomain);
 /tool e-mail set port=($topSmtpPort);
@@ -26,83 +27,37 @@
 :if ($rosMajorVersion = 6) do={
   :execute script="/tool e-mail set start-tls=tls-only";
 }
-:global currentUrlVal;
 
-# Get login from MAC address of an interface
-:local l "";
-:do {
-  :set l ([/interface get [find default-name=wlan1] mac-address]);
-} on-error={
-  :do {
-    :set l ([/interface get [find default-name=ether1] mac-address]);
-  } on-error={
-    :do {
-      :set l ([/interface get [find default-name=sfp-sfpplus1] mac-address]);
-    } on-error={
-      :do {
-        :set l ([/interface get [find default-name=lte1] mac-address]);
-      } on-error={
-        :log info ("No Interface MAC Address found to use as ISPApp login, default-name=wlan1, ether1, sfp-sfpplus1 or lte1 must exist.");
-      }
-    }
+# check if credentials are saved and recover them if there are not set.
+:if ([:len [/system script find where name~"ispapp_cred"]]) do={
+  :if ((!any $login) ||  (!any $topKey)) do={
+    /system script run ispapp_credentials
   }
 }
-# @Details: Function to convert to lowercase or uppercase 
-# @Syntax: $strcaseconv <input string>
-# @Example: :put ([$strcaseconv sdsdFS2k-122nicepp#]->"upper") --> result: SDSDFS2K-122NICEPP#
-# @Example: :put ([$strcaseconv sdsdFS2k-122nicepp#]->"lower") --> result: sdsdfs2k-122nicepp#
-:global strcaseconv do={
-    :local outputupper;
-    :local outputlower;
-    :local lower ("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z")
-    :local upper ("A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z")
-    :local lent [:len $1];
-    :for i from=0 to=($lent - 1) do={ 
-        if (any [:find $lower [:pick $1 $i]]) do={
-            :set outputupper ($outputupper . [:pick $upper [:find $lower [:pick $1 $i]]]);
-        } else={
-            :set outputupper ($outputupper . [:pick $1 $i])
-        }
-        if (any [:find $upper [:pick $1 $i]]) do={
-            :set outputlower ($outputlower . [:pick $lower [:find $upper [:pick $1 $i]]]);
-        } else={
-            :set outputlower ($outputlower . [:pick $1 $i])
-        }
-    }
-    :return {upper=$outputupper; lower=$outputlower};
-}
-
-# save important variables to be used after for recovery in case it's overrided of lost.
+:global librayupdateexist false;
 :do {
-  :if ([:len [/file find name=ispapp_cridentials]] > 0) do={
-    /file remove [/file find name=ispapp_cridentials]
+  :put "Fetch the last version of ispapp Libraries!"
+  :global librarylastversion;
+  :local currentVersion [$getVersion];
+  :if ((any $currentVersion) && ([:len $currentVersion] > 30)) do={
+    :if ($currentVersion != $librarylastversion) do={
+      :set librarylastversion $currentVersion;
+      :put "updating libraries to version $currentVersion!";
+      :set librayupdateexist true;
+      :put [$savecredentials];
+    }
   }
-  :local cridentials "\r\
-    \n:global topKey $topKey;\r\
-    \n:global topDomain $topDomain;\r\
-    \n:global topClientInfo $topClientInfo;\r\
-    \n:global topListenerPort $topListenerPort;\r\
-    \n:global topServerPort $topServerPort;\r\
-    \n:global topSmtpPort $topSmtpPort;\r\
-    \n:global ipbandswtestserver $ipbandswtestserver;\r\
-    \n:global btuser $btuser;\r\
-    \n:global btpwd $btpwd;";
-  /file add name=ispapp_cridentials contents=$cridentials
 } on-error={
-  :log error "faild to save cridentials!";
+  :log error "error accured while fetching the last release of library!";
 }
-
-:global login "00:00:00:00:00:00";
-:if ([:len $l] > 0) do={
-:set login ([$strcaseconv $l]->"lower");
-}
-
-:local sameScriptRunningCount [:len [/system script job find script=ispappConfig]];
-if ($sameScriptRunningCount > 1) do={
-  :error ("ispappConfig script already running " . $sameScriptRunningCount . " times");
-}
-:if ([:len [/system/script/find where name~"ispappLibrary"]] = 0) do={
+# start loading libraries from karim branch.
+:if (([:len [/system/script/find where name~"ispappLibrary"]] = 0) || $librayupdateexist) do={
   :put "Download and import ispappLibrary.rsc"
+  :local getVersion do={
+    :global librariesurl;
+    :local res ([/tool fetch url="$librariesurl" mode=https output=user as-value]->"data"); :local shaindex [:find $res "\"sha\":\""]; :local version [:pick $res ($shaindex + 7) ($shaindex + 47)];
+    :return $version;
+  }
   :do {
     /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
     /import ispappLibrary.rsc
@@ -113,11 +68,19 @@ if ($sameScriptRunningCount > 1) do={
 } else={
   :foreach id in=[/system/script/find where name~"ispappLibrary"] do={ /system/script/run $id } 
 }
-:if (any $login) do={
-  :put [$prepareSSL];
-  :put [$TopVariablesDiagnose];
+
+#----------------- agent recovery steps here.
+:if (any $prepareSSL) do={
+  :global prepareSSL;
+  :put [$prepareSSL]; # fix ntp and ssl
 }
-# run configs syncronisations.
+:if (any $TopVariablesDiagnose) do={
+  :global TopVariablesDiagnose;
+  :put [$TopVariablesDiagnose]; # fix crendentials 
+}
+
+#----------------- run configs syncronisations steps is here.
 :if (any $WirelessInterfacesConfigSync) do={
+  :global WirelessInterfacesConfigSync;
   :put [$WirelessInterfacesConfigSync];
 }

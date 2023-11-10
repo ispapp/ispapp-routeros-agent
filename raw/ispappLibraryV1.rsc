@@ -19,12 +19,12 @@
         # get configuration from the server
         :do {
             :global ispappHTTPClient;
-            :local res { "host"={ "Authed"=false } };
+            :local res;
             :local i 0;
-            :if ([$ispappHTTPClient m="get" a="update"]->"status"  = false) do={
+            :if ([$ispappHTTPClient m="get" a="update"]->"status" = false) do={
                 :return { "responce"="firt time config of server error"; "status"=false };
             }
-            :while ((($res->"host"->"Authed") != true && (!any[:find [:tostr $res] "Err.Raise"])) || $i > 2 ) do={
+            :while ((any[:find [:tostr $res] "Err.Raise"] || !any$res) && $i < 3) do={
                 :set res ([$ispappHTTPClient m="get" a="config"]->"parsed");
                 :set i ($i + 1);
             }
@@ -33,8 +33,13 @@
                 :log error "error while getting config (Err.Raise fJSONLoads)";
                 :return {"status"=false; "message"="error while getting config (Err.Raise fJSONLoads)"};
             } else={
-                :log info "check id json received is valid and redy to be used with responce: $res";
-                :return { "responce"=$res; "status"=true };
+                :if ($res->"host"->"Authed" != true) do={
+                    :log error [:tostr $res];
+                    :return {"status"=false; "message"=$res};
+                } else={
+                    :log info "check id json received is valid and redy to be used with responce: $res";
+                    :return { "responce"=$res; "status"=true };
+                }
             }
         } on-error={
             :log error "error while getting config (Err.Raise fJSONLoads)";
@@ -93,21 +98,26 @@
     if ([:len $wirelessConfigs] > 0) do={
         # this is the case when some interface configs received from the host
         # get security profile with same password as the one on first argument $1
-        :local SyncSecProfile do={
+        :global SyncSecProfile do={
             # add security profile if not found
             :do {
-                :local tempName ("ispapp_" . ($1->"ssid"));
-                :local currentProfilesAtPassword [:parse "/interface/wireless/security-profiles/print as-value where wpa-pre-shared-key=\$1"];
-                :local foundSecProfiles [$currentProfilesAtPassword $tempName];
+                :local key ($1->"encKey");
+                # search for profile with this same password if exist if not just create it.
+                :local currentProfilesAtPassword do={
+                    :local currentprfwpa2 [:parse "/interface/wireless/security-profiles/print as-value where wpa2-pre-shared-key=\$1"];
+                    :local currentprfwpa [:parse "/interface/wireless/security-profiles/print as-value where wpa-pre-shared-key=\$1"];
+                    :local secpp2 [$currentprfwpa2 $1];
+                    :local secpp [$currentprfwpa $1];
+                    :if ([:len $secpp2] > 0) do={
+                        :return $secpp2;
+                    } else={
+                        :return $secpp;
+                    }
+                };
+                # todo: separation of sec profiles ....
+                :local foundSecProfiles [$currentProfilesAtPassword $key]; # error 
                 :log info "add security profile if not found: $tempName";
-                :local updateSec  [:parse "/interface wireless security-profiles set \$3 \\
-                    wpa-pre-shared-key=\$1 \\
-                    wpa2-pre-shared-key=\$1 \\
-                    authentication-types=\$2"];
                 if ([:len $foundSecProfiles] > 0) do={
-                    :local thisencTypeFormated [$formatAuthTypes ($1->"encType")];
-                    :local thisfoundSecProfiles ($foundSecProfiles->0->".id");
-                    [$updateSec ($1->"encKey") $thisencTypeFormated $thisfoundSecProfiles];
                     :return ($foundSecProfiles->0->"name");
                 } else={
                      :local addSec  [:parse "/interface wireless security-profiles add \\
@@ -115,8 +125,8 @@
                         name=(\"ispapp_\" . (\$1->\"ssid\")) \\
                         wpa2-pre-shared-key=(\$1->\"encKey\") \\
                         wpa-pre-shared-key=(\$1->\"encKey\") \\
-                        authentication-types=(\$1->\"encTypeFormated\")"];
-                    [$addSec ($1 + {"encTypeFormated"=[$formatAuthTypes ($1->"encType")]})];
+                        authentication-types=wpa2-psk,wpa-psk"];
+                    :put [$addSec $1];
                     :return $tempName;
                 }
             } on-error={
@@ -125,13 +135,14 @@
                 :return [/interface/wireless/security-profiles/get *0 name];
             }
         }
+        :global convertToValidFormat;
         ## start comparing local and remote configs
         foreach conf in=$wirelessConfigs do={
             :log info "## start comparing local and remote configs ##";
             :local existedinterf [/interface/wireless/find ssid=($conf->"ssid")];
+            :local newSecProfile [$SyncSecProfile $conf];
             if ([:len $existedinterf] = 0) do={
                 # add new interface
-                :local newSecProfile [$SyncSecProfile $conf];
                 :local NewInterName ("ispapp_" . [$convertToValidFormat ($conf->"ssid")]);
                 :local masterinterface [/interface/wireless/get ([/interface/wireless/find]->0) name];
                 :log info "## add new interface -> $NewInterName ##";
@@ -142,7 +153,9 @@
                     master-interface=\$masterinterface \\
                     name=(\$1->\"NewInterName\") \\
                     disabled=no;"];
-                [$addInter ($conf + {"newSecProfile"=$newSecProfile; "NewInterName"=$NewInterName})];
+                :local newinterface ($conf + {"newSecProfile"=$newSecProfile; "NewInterName"=$NewInterName});
+                :log debug ("new interface details \n" . [:tostr $newinterface]);
+                :put [$addInter $newinterface];
                 :delay 3s; # wait for interface to be created
                 :log info "## wait for interface to be created 3s ##";
             } else={
@@ -189,13 +202,35 @@
             :set ($InterfaceslocalConfigs->$k) {
                 "if"=([/interface/wireless/get $interfaceid name]);
                 "ssid"=([/interface/wireless/get $interfaceid ssid]);
-                "key"=([/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa-pre-shared-key]);
-                "keytypes"=([$joinArray [$getkeytypes $interfaceid] ","])
+                "key"=([/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa2-pre-shared-key]);
+                "keytypes"=([$joinArray [$getkeytypes $interfaceid] ","]);
+                "interface-type"=([/interface/wireless/get $interfaceid interface-type]);
+                "security_profile"=([/interface/wireless/get $interfaceid security-profile])
+            };
+        };
+        :local SecProfileslocalConfigs; 
+        :foreach k,secid in=[/interface/wireless/security-profile find] do={
+            :set ($SecProfileslocalConfigs->$k) {
+                "name"=([/interface/wireless/security-profile get $secid name]);
+                "authentication-types"=([/interface/wireless/security-profile get $secid authentication-types]);
+                "wpa2-pre-shared-key"=([/interface/wireless/security-profile get $secid wpa2-pre-shared-key]);
+                "wpa-pre-shared-key"=([/interface/wireless/security-profile get $secid wpa-pre-shared-key]);
+                "eap-methods"=([/interface/wireless/security-profile get $secid eap-methods]);
+                "mode"=([/interface/wireless/security-profile get $secid mode]);
+                "default"=([/interface/wireless/security-profile get $secid default])
             };
         };
         :local sentbody "{}";
         :local message ("uploading " . [:len $InterfaceslocalConfigs] . " interfaces to ispapp server");
-        :set sentbody ([$getAllConfigs $InterfaceslocalConfigs]->"json");
+        :if ([:len $InterfaceslocalConfigs] = 0) do={
+            :set InterfaceslocalConfigs "[]";
+        }
+        :if ([:len $SecProfileslocalConfigs] = 0) do={
+            :set SecProfileslocalConfigs "[]";
+        }
+        :global getAllConfigs;
+        :global ispappHTTPClient;
+        :set sentbody ([$getAllConfigs $InterfaceslocalConfigs $SecProfileslocalConfigs]->"json");
         :local returned  [$ispappHTTPClient m=post a=config b=$sentbody];
         :return ($output+{
             "status"=true;
@@ -376,10 +411,19 @@
 :global TopVariablesDiagnose do={
     :global topDomain;
     :global topKey;
+    :global login;
     :global topSmtpPort;
     :global rosMajorVersion;
     :global topListenerPort;
-    :local refreched do={:return {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login}};
+    :local refreched do={
+        :global topDomain;
+        :global topKey;
+        :global login;
+        :global topSmtpPort;
+        :global rosMajorVersion;
+        :global topListenerPort;
+        :return {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login}
+    };
     :local res {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login};
     # try recover the cridentials from the file if exist.
     :if ([:len [/file find name=ispapp_cridentials]] > 0) do={
@@ -418,33 +462,6 @@
             :log info [$settls];
         }
     }
-    # Check if login is not set and assign a default value as the MikroTik MAC address
-    :if (!any $login) do={
-      :do {
-        :global login ([/interface get [find default-name=wlan1] mac-address]);
-        :set res [$refreched];
-      } on-error={
-        :do {
-          :global login ([/interface get [find default-name=ether1] mac-address]);
-          :set res [$refreched];
-        } on-error={
-            :do {
-                :global login ([/interface get [find default-name=sfp-sfpplus1] mac-address]);
-                :set res [$refreched];
-            } on-error={
-                :do {
-                    :global login ([/interface get [find default-name=lte1] mac-address]);
-                    :set res [$refreched];
-                } on-error={
-                    :log info ("No Interface MAC Address found to use as ISPApp login, default-name=wlan1, ether1, sfp-sfpplus1 or lte1 must exist.");
-                    :set res [$refreched];
-                }
-            }
-        }
-    }
-    :global login $login;
-    :set login ([$strcaseconv $login]->"lower");
-  }
   :return $res;
 }
 
@@ -596,6 +613,7 @@
         :set certCheck "yes";
         :log info "ssl preparation is completed with success!";
     }
+    
     if (!any $m) do={
         :local method "get";
     }
@@ -606,28 +624,31 @@
     }
     # check if key was provided if not run ispappSet
     if (!any $topKey) do={
-        :global topKey; 
+        :set topKey; 
     }
     # Check if topListenerPort is not set and assign a default value if not set
     :if (!any $topListenerPort) do={
-        :global topListenerPort 8550;
+        :set topListenerPort 8550;
     }
     # Check if topDomain is not set and assign a default value if not set
     :if (!any $topDomain) do={
-        :global topDomain "qwer.ispapp.co";
+        :set topDomain "qwer.ispapp.co";
     }
     # Check certificates
     # Make request
     :local out;
     :local requesturl;
     :do {
+        :global login;
         :set requesturl "https://$topDomain:$topListenerPort/$action?login=$login&key=$topKey";
+        :log info "Request details: \n\t$requesturl \n\t http-method=\"$m\" \n\t http-data=\"$b\"";
         if (!any $b) do={
             :set out [/tool fetch url=$requesturl check-certificate=$certCheck http-method=$m output=user as-value];
         } else={
             :set out [/tool fetch url=$requesturl check-certificate=$certCheck http-header-field="cache-control: no-cache, content-type: application/json, Accept: */*" http-method="$m" http-data="$b" output=user as-value];
         }
         if ($out->"status" = "finished") do={
+            :global JSONLoads;
             :local parses [$JSONLoads ($out->"data")];
             :return { "status"=true; "response"=($out->"data"); "parsed"=$parses; "requestUrl"=$requesturl };
         } else={
