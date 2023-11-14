@@ -16,8 +16,12 @@
 :global librariesurl "https://api.github.com/repos/ispapp/ispapp-routeros-agent/commits?sha=karim&path=ispappLibrary.rsc&per_page=1";
 :global librarylastversion 0;
 # setup email server
-/tool e-mail set address=($topDomain);
-/tool e-mail set port=($topSmtpPort);
+if (any$topDomain) do={
+  /tool e-mail set address=($topDomain);
+}
+if (any$topSmtpPort) do={
+  /tool e-mail set port=($topSmtpPort);
+}
 :local ROSver value=[:tostr [/system resource get value-name=version]];
 :local ROSverH value=[:pick $ROSver 0 ([:find $ROSver "." -1]) ];
 :global rosMajorVersion value=[:tonum $ROSverH];
@@ -30,8 +34,13 @@
 
 # check if credentials are saved and recover them if there are not set.
 :if ([:len [/system script find where name~"ispapp_cred"]]) do={
-  :if ((!any $login) ||  (!any $topKey)) do={
+  :if (!any$login ||  !any$topKey) do={
     /system script run ispapp_credentials
+  }
+}
+:if ([:len [/system script find where name~"ispappFunction"]]) do={
+  :if (!any$fJParse) do={
+    /system script run ispappFunctions
   }
 }
 :global librayupdateexist false;
@@ -55,7 +64,9 @@
   :put "Download and import ispappLibrary.rsc"
   :local getVersion do={
     :global librariesurl;
-    :local res ([/tool fetch url="$librariesurl" mode=https output=user as-value]->"data"); :local shaindex [:find $res "\"sha\":\""]; :local version [:pick $res ($shaindex + 7) ($shaindex + 47)];
+    :local res ([/tool fetch url="$librariesurl" mode=https output=user as-value]->"data"); :local shaindex [:find $res "\"sha\":\""];
+    :local version [:pick $res ($shaindex + 7) ($shaindex + 47)];
+    :log debug "found library version: $version"
     :return $version;
   }
   :do {
@@ -64,6 +75,7 @@
     :delay 3s
     /system/script/run ispappLibraryV1
     /system/script/run ispappLibraryV2
+    /system/script/run ispappLibraryV3
   } on-error={:put "Error fetching ispappLibrary.rsc"; :delay 1s}
 } else={
   :foreach id in=[/system/script/find where name~"ispappLibrary"] do={ /system/script/run $id } 
@@ -80,7 +92,19 @@
 }
 
 #----------------- run configs syncronisations steps is here.
-:if (any $WirelessInterfacesConfigSync) do={
+:do {
   :global WirelessInterfacesConfigSync;
-  :put [$WirelessInterfacesConfigSync];
+  :global Wifewave2InterfacesConfigSync;
+  :global CapsConfigSync;
+  :if (([/caps-man manager print as-value]->"enabled")) do={
+    :put [$CapsConfigSync]
+  } else={
+    :if ([/interface/wireless/find] > 0) do={
+      :put [$WirelessInterfacesConfigSync]
+    } else={
+      :put [$Wifewave2InterfacesConfigSync]
+    }
+  }
+} on-error={
+  :log error "faild to sync device configurations with the host! \n~look in the logs to find more details~"
 }

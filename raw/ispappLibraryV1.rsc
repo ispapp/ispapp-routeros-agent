@@ -204,6 +204,7 @@
                 "ssid"=([/interface/wireless/get $interfaceid ssid]);
                 "key"=([/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa2-pre-shared-key]);
                 "keytypes"=([$joinArray [$getkeytypes $interfaceid] ","]);
+                "technology"="wireless";
                 "interface-type"=([/interface/wireless/get $interfaceid interface-type]);
                 "security_profile"=([/interface/wireless/get $interfaceid security-profile])
             };
@@ -214,6 +215,7 @@
                 "name"=([/interface/wireless/security-profile get $secid name]);
                 "authentication-types"=([/interface/wireless/security-profile get $secid authentication-types]);
                 "wpa2-pre-shared-key"=([/interface/wireless/security-profile get $secid wpa2-pre-shared-key]);
+                "technology"="wireless";
                 "wpa-pre-shared-key"=([/interface/wireless/security-profile get $secid wpa-pre-shared-key]);
                 "eap-methods"=([/interface/wireless/security-profile get $secid eap-methods]);
                 "mode"=([/interface/wireless/security-profile get $secid mode]);

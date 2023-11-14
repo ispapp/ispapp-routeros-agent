@@ -188,36 +188,5 @@
   :return "ispapp_credentials updated!";
 }
 :put "\t V2 Library loaded! (;";
-# Function to send updates to host
-# usage: 
-#       :put [$HostDataUpdate] // result: {status=<bool>; bayload=<post_request_payload | none>, error_reason=<string>}
-# params: none
-# requirements: ispappLibraryV1 and ispappInit
-# tasks performed by the function:
-#   - collect data from the device and format it in json using the fuction toJson
-#   - check updates comming from the host and apply them to device
-#   - run cmds and return results
-# :global HostDataUpdate do={
-#     :local ssl [$prepareSSL];
-#     :if (($ssl->"caStatus" = false) || ($ssl->"ntpStatus" = false)) do={
-#         :log error [:tostr $ssl];
-#     }
-#     :if (![$loginIsOk]) do={
-#         :log error [:tostr $login];
-#         [$TopVariablesDiagnose];
-#         :if (![$loginIsOk]) do={
-#             :log error "login faild! check your topKey global variable!!";
-#             :return { "status"=false; "error_reason"="login faild! check your topKey global variable" }
-#         }
-#     }
-#     :local sequenceNumber [[:parse "/system/scheduler/get ispappUpdate run-count"]];
-#     :local upTime [/system resource get uptime];
-#     :local collectedData {
-#         "collectors"={};
-#         "wanIp"=;
-#         "uptime"=$upTime;
-#         "sequenceNumber"=$sequenceNumber;
-#     };
-    
-# }
+
 
