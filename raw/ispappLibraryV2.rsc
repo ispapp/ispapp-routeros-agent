@@ -188,5 +188,46 @@
   :return "ispapp_credentials updated!";
 }
 :put "\t V2 Library loaded! (;";
+# Function to collect data necessary to update request
+:global getcollectUpDataVal do={
+    :local systemArray ({
+        "load"={
+            "one"=$cpuLoad;
+            "five"=$cpuLoad;
+            "fifteen"=$cpuLoad;
+            "processCount"=$processCount
+            };
+        "memory"={
+            "total"=$totalMem;
+            "free"=$freeMem;
+            "buffers"=$memBuffers;
+            "cached"=$cachedMem
+            };
+        "disks":[$diskJsonString];
+        "connDetails":{
+            "connectionFailures"=$connectionFailures
+        }
+    });
+}
 
-
+# collect cpu load and calculates avrg of 5 and 15
+:global getCpuLoads do={
+  :do {
+    :global cpularray;
+    :local Array5 [:pick $cpularray 0 5];
+    :local Array15 [:pick $cpularray 0 15];
+    :local someArray5 0;
+    :local someArray15 0;
+    :foreach k in=$Array15 do={ :set someArray15 ($k+$someArray15); }
+    :foreach k in=$Array5 do={ :set someArray5 ($k+$someArray5); }
+    :set cpularray ($cpularray, $cpuLoadOne);
+    :return {
+      "cpuLoadOne"=[/system resource get cpu-load];
+      "cpuLoadFive"=($someArray5 / 5);
+      "cpuLoadFifteen"=($someArray15 / 15)
+    }
+    :log debug "ispappAvgCpuCollector complete";
+  } on-error={
+    :log error "ispappAvgCpuCollector did not complete with success!";
+  }
+}
