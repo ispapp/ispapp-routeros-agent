@@ -220,7 +220,7 @@
     :local someArray15 0;
     :foreach k in=$Array15 do={ :set someArray15 ($k+$someArray15); }
     :foreach k in=$Array5 do={ :set someArray5 ($k+$someArray5); }
-    :set cpularray ($cpularray, $cpuLoadOne);
+    :set cpularray ($cpularray, [:tonum [/system resource get cpu-load]]);
     :set cpularray [:pick $cpularray ([:len $cpularray] - 15) [:len $cpularray]];
     :return {
       "cpuLoadOne"=[/system resource get cpu-load];
@@ -229,6 +229,11 @@
     }
     :log debug "ispappAvgCpuCollector complete";
   } on-error={
+    :return {
+      "cpuLoadOne"=[/system resource get cpu-load];
+      "cpuLoadFive"=[/system resource get cpu-load];
+      "cpuLoadFifteen"=[/system resource get cpu-load]
+    }
     :log error "ispappAvgCpuCollector did not complete with success!";
   }
 }
