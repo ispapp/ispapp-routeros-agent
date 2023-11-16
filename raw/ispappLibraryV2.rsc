@@ -221,10 +221,11 @@
     :foreach k in=$Array15 do={ :set someArray15 ($k+$someArray15); }
     :foreach k in=$Array5 do={ :set someArray5 ($k+$someArray5); }
     :set cpularray ($cpularray, $cpuLoadOne);
+    :set cpularray [:pick $cpularray ([:len $cpularray] - 15) [:len $cpularray]];
     :return {
       "cpuLoadOne"=[/system resource get cpu-load];
-      "cpuLoadFive"=($someArray5 / 5);
-      "cpuLoadFifteen"=($someArray15 / 15)
+      "cpuLoadFive"=($someArray5 / [:len $Array5]);
+      "cpuLoadFifteen"=($someArray15 / [:len $Array15])
     }
     :log debug "ispappAvgCpuCollector complete";
   } on-error={
