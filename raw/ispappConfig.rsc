@@ -73,6 +73,7 @@ if (any$topSmtpPort) do={
     /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
     /import ispappLibrary.rsc
     :delay 3s
+    /system/script/run ispappLibraryV0
     /system/script/run ispappLibraryV1
     /system/script/run ispappLibraryV2
     /system/script/run ispappLibraryV3

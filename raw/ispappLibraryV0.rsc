@@ -631,56 +631,36 @@
   :return ($mergeUrl);
 
 }
-
+# function to split string by delimiter 
+# usage: :put [$Split "Split" "i"]; #result in: Spl;t
 :global Split do={
-
   :local input $1;
   :local delim $2;
-
-  #:put "Split()";
-  #:put "INPUT: $input";
-  #:put "DELIMETER: $delim";
-
   :local strElem;
   :local arr [:toarray ""];
   :local arrIndex 0;
 
   :for c from=0 to=[:len $input] do={
-
     :local ch [:pick $input $c ($c+1)];
-    #:put "ch $c: $ch";
-
     if ($ch = $delim) do={
-
       if ([:len $strElem] > 0) do={
-        #:put "found strElem: $strElem";
         :set ($arr->$arrIndex) $strElem;
         :set arrIndex ($arrIndex+1);
         :set strElem "";
       }
-
     } else={
       :set strElem ($strElem . $ch);
     }
-
   }
-
-  #:put "last strElem: $strElem";
   :set ($arr->$arrIndex) $strElem;
-
   :return $arr;
-
 }
 
 # routeros 0w0d0m0s to seconds
 :global rosTsSec do={
 
   :local input $1;
-
-  #:put "rosTsSec $input";
-
   :local upSeconds 0;
-
   :local weeks 0;
   if (([:find $input "w"]) > 0 ) do={
     :set weeks ([:pick $input 0 ([:find $input "w"])]);
@@ -691,18 +671,13 @@
     :set days ([:pick $input 0 [:find $input "d"]]);
     :set input [:pick $input ([:find $input "d"]+1) [:len $input]];
   }
-
   :local hours [:pick $input 0 [:find $input ":"]];
   :set input [:pick $input ([:find $input ":"]+1) [:len $input]];
-
   :local minutes [:pick $input 0 [:find $input ":"]];
   :set input [:pick $input ([:find $input ":"]+1) [:len $input]];
-
   :local upSecondVal 0;
   :set upSecondVal $input;
-
   :set upSeconds value=[:tostr (($weeks*604800)+($days*86400)+($hours*3600)+($minutes*60)+$upSecondVal)];
-
   return $upSeconds;
 
 }
@@ -817,3 +792,4 @@
   :return ($datePartDiffSec + $timePartDiffSec + $leapSecondsInDatePart);
 
 }
+:put "\t V0 Library loaded! (;";

@@ -415,42 +415,45 @@
     :global topKey;
     :global login;
     :global topSmtpPort;
+    :global startEncode;
+    :global isSend;
     :global rosMajorVersion;
     :global topListenerPort;
+    :local res {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login};
     :local refreched do={
         :global topDomain;
-        :global topKey;
         :global login;
-        :global topSmtpPort;
-        :global rosMajorVersion;
         :global topListenerPort;
         :return {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login}
     };
-    :local res {"topListenerPort"=$topListenerPort; "topDomain"=$topDomain; "login"=$login};
     # try recover the cridentials from the file if exist.
     :if ([:len [/file find name=ispapp_cridentials]] > 0) do={
         [[:parse [/file get [/file find where name~"ispapp_cridentials"] contents]]]
     }
     # Check if topListenerPort is not set and assign a default value if not set
     :if (!any $topListenerPort) do={
-      :global topListenerPort 8550;
+      :set topListenerPort 8550;
       :set res [$refreched];
     }
     :if ((!any $startEncode) || (!any $isSend)) do={
-        :global startEncode 1;
-        :global isSend 1;
+        :set startEncode 1;
+        :set isSend 1;
     }
     # Check if topDomain is not set and assign a default value if not set
     :if (!any $topDomain) do={
-      :global topDomain "qwer.ispapp.co"
+      :set topDomain "qwer.ispapp.co"
       :set res [$refreched];
     }
     :if (!any $topSmtpPort) do={
-      :global topSmtpPort 8465;
-      :set res [$refreched];
+      :set topSmtpPort 8465;
+      :set res [$refreched]
     }
     :if ([/tool e-mail get address] != $topDomain) do={
-        /tool e-mail set address=($topDomain);
+        # :if (any ([/tool e-mail print as-value]->"address")) do={
+            # /tool e-mail set address=($topDomain);
+        # } else={
+            /tool e-mail set server=($topDomain);
+        # }
     }
     :if ([/tool e-mail get port] != $topSmtpPort) do={
         /tool e-mail set port=([:tonum $topSmtpPort]);
