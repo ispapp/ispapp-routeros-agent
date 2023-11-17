@@ -448,7 +448,7 @@
       :set topSmtpPort 8465;
       :set res [$refreched]
     }
-    :if ([/tool e-mail get address] != $topDomain) do={
+    :if ([/tool e-mail get server] != $topDomain) do={
         # :if (any ([/tool e-mail print as-value]->"address")) do={
             # /tool e-mail set address=($topDomain);
         # } else={
@@ -461,7 +461,7 @@
     :if (!any $rosMajorVersion) do={
         :local ROSver value=[:tostr [/system resource get value-name=version]];
         :local ROSverH value=[:pick $ROSver 0 ([:find $ROSver "." -1]) ];
-        :global rosMajorVersion value=[:tonum $ROSverH];
+        :set rosMajorVersion value=[:tonum $ROSverH];
         :if ($rosMajorVersion = 7) do={
             :local settls [:parse "/tool e-mail set tls=yes"];
             :log info [$settls];

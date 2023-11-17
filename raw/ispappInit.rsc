@@ -7,7 +7,6 @@
 :global updateScriptSuccessSinceInit false;
 :do {
      /system script run ispappConfig;
-  #:put ("ran ispappConfig");
 } on-error={
   :log info ("ispappConfig script error.");
 }

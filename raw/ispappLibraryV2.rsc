@@ -237,23 +237,3 @@
     :log error "ispappAvgCpuCollector did not complete with success!";
   }
 }
-# Function to clean old agent setup
-:global cleanupagent do={
-  :do {
-    # remove scripts
-    if (!any $removeIspappScripts){
-        :put [$removeIspappScripts];
-    }
-    # remove schedulers
-    if (!any $removeIspappSchedulers){
-        :put [$removeIspappSchedulers];
-    }
-    # remove environment variables
-    foreach envVarId in=[/system script environment find] do={
-      /system script environment remove $envVarId;
-    }
-  } on-error{
-      :put "\E2\9D\8C ispappLibrary not loaded try reset the agent";
-      :log error "\E2\9D\8C ispappLibrary not loaded try reset the agent";
-  }
-}

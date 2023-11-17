@@ -11,9 +11,6 @@
 :global btpwd "#####btp#####";
 
 # cleanup old setup if exist (scripts, files, schedulers)
-/system/script/remove [/system/script/find where name~"ispapp"]
-/file/remove [/file/find where name~"ispapp"]
-/system/scheduler/remove [/system/scheduler/find where name~"ispapp"]
 # @Details: Function to convert to lowercase or uppercase 
 # @Syntax: $strcaseconv <input string>
 # @Example: :put ([$strcaseconv sdsdFS2k-122nicepp#]->"upper") --> result: SDSDFS2K-122NICEPP#
@@ -37,6 +34,26 @@
         }
     }
     :return {upper=$outputupper; lower=$outputlower};
+}
+# Function to clean old agent setup will be used in ispapp only 
+:global cleanupagent do={
+  :do {
+    # remove scripts
+    /system/script/remove [/system/script/find where name~"ispapp"]
+    # remove files
+    /file/remove [/file/find where name~"ispapp"]
+    # remove schedulers
+    /system/scheduler/remove [/system/scheduler/find where name~"ispapp"]
+    # remove environment variables
+    foreach envVarId in=[/system script environment find] do={
+      /system script environment remove $envVarId;
+    }
+      :log error "\E2\9D\8C old agent stup cleaned";
+      :return "\E2\9D\8C old agent setup cleaned";
+  } on-error{
+      :return "\E2\9D\8C ispappLibrary not loaded try reset the agent";
+      :log error "\E2\9D\8C ispappLibrary not loaded try reset the agent";
+  }
 }
 # Get login from MAC address of an interface
 :global login "00:00:00:00:00:00";
@@ -94,6 +111,8 @@
   :log info "ispapp_credentials updated!";
   :return "ispapp_credentials updated!";
 }
+# setup steps 
+:put [$cleanupagent];
 :put [$savecredentials];
 # start installing rsc files from repos.
 :put "ispappConfig.rsc"
@@ -117,13 +136,6 @@
   :delay 3s
 } on-error={:put "Error fetching ispappInit.rsc"; :delay 1s}
 
-:put "Download and import ispappFunctions.rsc"
-:do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappFunctions.rsc" dst-path="ispappFunctions.rsc"
-  /import ispappFunctions.rsc
-  :delay 3s
-} on-error={:put "Error fetching ispappFunctions.rsc"; :delay 1s}
-
 :put "Download and import ispappPingCollector.rsc"
 :do {
   /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappPingCollector.rsc" dst-path="ispappPingCollector.rsc"
@@ -144,13 +156,6 @@
   /import ispappCollectors.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappCollectors.rsc"; :delay 1s}
-
-:put "ispappRemoveConfiguration.rsc"
-:do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/master/ispappRemoveConfiguration.rsc" dst-path="ispappRemoveConfiguration.rsc"
-  /import ispappRemoveConfiguration.rsc
-  :delay 3s
-} on-error={:put "Error fetching ispappRemoveConfiguration.rsc"; :delay 1s}
 
 :put "ispappUpdate.rsc"
 :do {

@@ -17,7 +17,7 @@
 :global librarylastversion 0;
 # setup email server
 if (any$topDomain) do={
-  /tool e-mail set address=($topDomain);
+  /tool e-mail set server=($topDomain);
 }
 if (any$topSmtpPort) do={
   /tool e-mail set port=($topSmtpPort);
@@ -73,10 +73,8 @@ if (any$topSmtpPort) do={
     /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
     /import ispappLibrary.rsc
     :delay 3s
-    /system/script/run ispappLibraryV0
-    /system/script/run ispappLibraryV1
-    /system/script/run ispappLibraryV2
-    /system/script/run ispappLibraryV3
+    # load libraries
+    :foreach lib in=[/system/script/find name~"ispappLibrary"] do={ /system/script/run $lib; }
   } on-error={:put "Error fetching ispappLibrary.rsc"; :delay 1s}
 } else={
   :foreach id in=[/system/script/find where name~"ispappLibrary"] do={ /system/script/run $id } 
