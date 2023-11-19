@@ -237,3 +237,67 @@
     :log error "ispappAvgCpuCollector did not complete with success!";
   }
 }
+# Function to collect metric from each interface and format them as array
+# usage:
+#    :put [$collectInterfacesMetrics]
+:global collectInterfacesMetrics do={
+  :local cout ({});
+  :foreach i,iface in=[/interface find] do={
+    :set ($cout->$i) {
+    "if"=[/interface get $iface name];
+    "recBytes"=[/interface get $iface rx-byte];
+    "recPackets"=[/interface get $iface rx-packet];
+    "recErrors"=[/interface get $iface rx-error];
+    "recDrops"=[/interface get $iface rx-drop];
+    "sentBytes"=[/interface get $iface tx-byte];
+    "sentPackets"=[/interface get $iface tx-packet];
+    "sentErrors"=[/interface get $iface tx-error];
+    "sentDrops"=[/interface get $iface tx-drop];
+    "carrierChanges"=[/interface get $iface link-downs];
+    "macs"=[:len [/ip arp find where interface=$ifaceName]]
+    }
+  }
+  :return $cout;
+}
+# Function to wap interfaces metrics (work on progress ...)
+# usage:
+#    :put [$wapCollector]
+# :global wapCollector do={
+#   :local cout ({});
+#   :if (([/caps-man manager print as-value]->"enabled")) do={
+#     :foreach i,wIfaceId in=[/caps-man interface find] do={
+#       :set ($cout->$i) {
+#         "stations"=[$staJson];
+#         "interface"=[/caps-man interface get $wIfaceId name];
+#         "ssid"=[/caps-man interface get $wIfaceId configuration.ssid];
+#         "noise"=$wIfNoise;
+#         "signal0"=$wIfSig0;
+#         "signal1"=$wIfSig1
+#         };
+#     }
+#   } else={
+#     :if ([/interface/wireless/find] > 0) do={
+#       :foreach i,wIfaceId in=[/interface wireless find] do={
+#         :set ($cout->$i) {
+#           "stations"=[$staJson];
+#           "interface"=[/interface wireless get $wIfaceId name];
+#           "ssid"=[/interface wireless get $wIfaceId ssid];
+#           "noise"=$wIfNoise;
+#           "signal0"=$wIfSig0;
+#           "signal1"=$wIfSig1
+#           };
+#       }
+#     } else={
+#       :foreach i,wIfaceId in=[/interface wifiwave2 find] do={
+#         :set ($cout->$i) {
+#         "stations"=[$staJson];
+#         "interface"=[/interface wifiwave2 get $wIfaceId name];
+#         "ssid"=[/interface wifiwave2 get $wIfaceId configuration.ssid];
+#         "noise"=$wIfNoise;
+#         "signal0"=$wIfSig0;
+#         "signal1"=$wIfSig1
+#         };
+#       }
+#     }
+#   }
+# }
