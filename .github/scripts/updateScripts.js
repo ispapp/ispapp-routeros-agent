@@ -59,7 +59,7 @@ const processotherScripts = (scripts) => {
     const scriptFileName = `${path.basename(scriptPath, path.extname(scriptPath))}${path.extname(scriptPath)}`;
     const finalCommand = `/system script add dont-require-permissions=yes name=${scriptName} owner=admin policy=\
 ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="${formattedScript}"`;
-    const outputFilePath = path.join(__dirname, './', scriptFileName);
+    const outputFilePath = path.join(__dirname, '../../', scriptFileName);
     console.log(`\n ${outputFilePath} ✅`);
     fs.writeFileSync(outputFilePath, finalCommand);
     }
