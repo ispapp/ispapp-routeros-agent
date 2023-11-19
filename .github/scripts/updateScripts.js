@@ -7,22 +7,25 @@ const prefixregex = /ispappLibrary/;
 
 const getAllFiles = (dir) => {
   const files = fs.readdirSync(dir);
-  const result = [];
+  const librariesresult = [];
+  const othersresult = [];
 
   files.forEach((file) => {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
 
     if (stat.isDirectory()) {
-      result.push(...getAllFiles(filePath));
+      librariesresult.push(...getAllFiles(filePath));
     } else {
       if (prefixregex.test(file)) {
-        result.push(filePath);
+        librariesresult.push(filePath);
+      } else {
+        othersresult.push(filePath)
       }
     }
   });
 
-  return result;
+  return {libraries:librariesresult, others:othersresult};
 };
 
 const getFormattedScript = (scriptContent=[]) => {
@@ -32,7 +35,7 @@ const getFormattedScript = (scriptContent=[]) => {
     .join('');
 };
 
-const processScripts = (scripts) => {
+const processlibraryScripts = (scripts) => {
   const uniqueCommands = new Set();
 
   scripts.forEach((scriptPath) => {
@@ -47,19 +50,33 @@ ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="${forma
 
   return Array.from(uniqueCommands).join('\n');
 };
-
+const processotherScripts = (scripts) => {
+  scripts.forEach((scriptPath) => {
+    if (path.extname(scriptPath) == '.rsc') {
+    const scriptContent = fs.readFileSync(scriptPath, 'utf-8');
+    const formattedScript = getFormattedScript(scriptContent);
+    const scriptName = path.basename(scriptPath, path.extname(scriptPath));
+    const scriptFileName = `${path.basename(scriptPath, path.extname(scriptPath))}${path.extname(scriptPath)}`;
+    const finalCommand = `/system script add dont-require-permissions=yes name=${scriptName} owner=admin policy=\
+ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="${formattedScript}"`;
+    const outputFilePath = path.join(__dirname, './', scriptFileName);
+    console.log(`\n ${outputFilePath} ✅`);
+    fs.writeFileSync(outputFilePath, finalCommand);
+    }
+  });
+};
 const scriptsFolderFullPath = path.join(__dirname, '../../', scriptsFolder);
 const outputFilePath = path.join(__dirname, '../../', outputFileName);
 
 const allFiles = getAllFiles(scriptsFolderFullPath);
-const finalCommands = processScripts(allFiles);
-
+const ispappLibrary = processlibraryScripts(allFiles.libraries);
+fs.writeFileSync(outputFilePath, `/system script ${ispappLibrary}`);
 console.log(`
 ############# job done ########
-${allFiles.map(file => `${file} ✅`).join("\n")} ✅
+${allFiles.libraries.map(file => `${file} ✅`).join("\n")} ✅
       ⬇
 ${outputFilePath} ✅
 ###############################
 `);
+processotherScripts(allFiles.others);
 
-fs.writeFileSync(outputFilePath, `/system script ${finalCommands}`);

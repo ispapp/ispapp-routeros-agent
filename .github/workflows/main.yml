@@ -32,7 +32,7 @@ jobs:
     - name: Update resources
       uses: test-room-7/action-update-file@v1
       with:
-        file-path: ispappLibrary.rsc
+        file-path: ispapp*.rsc
         branch: karim
-        commit-msg: ispappLibrary.rsc updated ${{ env.LAST_COMMIT_MSG }}
+        commit-msg: ispapp agent scripts updated <${{ env.LAST_COMMIT_MSG }}>
         github-token: ${{ secrets.ISPAPPTOKEN }}
