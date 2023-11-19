@@ -23,3 +23,16 @@ jobs:
 
     - name: Generate and update ispappLibrary.rsc
       run: node .github/scripts/updateScripts.js
+    
+    - name: Get last commit message
+      id: commit_msg
+      run: |
+        echo "LAST_COMMIT_MSG=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+    
+    - name: Update resources
+      uses: test-room-7/action-update-file@v1
+      with:
+        file-path: ispappLibrary.rsc
+        branch: karim
+        commit-msg: ispappLibrary.rsc updated ${{ env.LAST_COMMIT_MSG }}
+        github-token: ${{ secrets.ISPAPPTOKEN }}
