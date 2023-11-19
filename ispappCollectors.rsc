@@ -124,11 +124,9 @@ if (\$collectorsRunning = true) do={
         :local ifaceData \"{\\\"if\\\":\\\"\$ifaceName\\\",\\\"recBytes\\\":\$rxBytes,\\\"recPackets\\\":\$rxPackets,\\\"recErrors\\\":\$rxErrors,\\\"recDrops\\\":\$rxDrops,\\\"sentBytes\\\":\$txBytes,\\\"sentPackets\\\":\$txPackets,\\\"sentErrors\\\":\$txErrors,\\\"sentDrops\\\":\$txDrops,\\\"carrierChanges\\\":\$cChanges,\\\"macs\\\":\$macs}\";
         :set ifaceDataArray (\$ifaceDataArray.\$ifaceData);
       }
-
     }
   }
 }
-
 #------------- Wap Collector-----------------
 
 :local wapArray;
