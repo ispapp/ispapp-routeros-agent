@@ -2442,4 +2442,21 @@
     }
     :return \$cout;
 }
+# Function to collect partitions metrics
+# usage: 
+#       :put [\$partitionsMetrics];
+:global partitionsMetrics do={
+    :local cout ({});
+    :foreach i,part in=[/partitions find] do={
+        :set (\$cout->\$i) {
+            \"name\"=[/partitions get \$part name];
+            \"fallback-to\"=[/partitions get \$part fallback-to];
+            \"version\"=[/partitions get \$part version]
+            \"running\"=[/partitions get \$part running]
+            \"active\"=[/partitions get \$part active]
+            \"size\"=[/partitions get \$part size]
+        };
+    }
+    :return \$cout;
+}
 :put \"\\t V3 Library loaded! (;\";"
