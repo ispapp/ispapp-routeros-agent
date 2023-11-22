@@ -491,4 +491,31 @@
         });
     }
 };
+# Function to collect disks metrics
+# usage: 
+#       :put [$diskMetrics];
+:global diskMetrics do={
+    :local cout ({});
+    :foreach i,disk in=[/disk find] do={
+      :local diskName [/disk get $disk slot];
+      :local diskFree [/disk get $disk free];
+      :local diskSize [/disk get $disk size];
+      :if ([:len $diskFree] = 0) do={
+        :set diskFree 0;
+      }
+      :if ([:len $diskSize] = 0) do={
+        :set diskSize 0;
+      }
+      :local diskUsed (($diskSize - $diskFree));
+      # skip disks with no slot
+      :if ([:len $diskName] > 0) do={
+        :set ($cout->$i) {
+            "mount"=$diskName;
+            "used"=$diskUsed;
+            "avail"=$diskFree
+        };
+      }
+    }
+    :return $cout;
+}
 :put "\t V3 Library loaded! (;";
