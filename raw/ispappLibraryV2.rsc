@@ -270,6 +270,7 @@
   :local wStaSig1 0;
   :local wIfSig1 0;
   :local wIfSig0 0;
+  :global rosTsSec;
   :foreach i,wStaId in=[/interface wireless registration-table find where interface=$1] do={
         :local wStaMac ([/interface wireless registration-table get $wStaId mac-address]);
         :local wStaRssi ([/interface wireless registration-table get $wStaId signal-strength]);
@@ -313,12 +314,87 @@
           "info"=$wStaDhcpName
         };
       }
+    :local count [:len $staout];
+    if ($count = 0) do={
+      :set count 1;
+    }
+    :set wIfNoise (-$wIfNoise / $count)
     :return {
       "stations"=$staout;
       "noise"=$wIfNoise;
       "signal0"=$wIfSig0;
       "signal1"=$wIfSig1
     };
+}
+# Function to collect cap-man managed interface stations metrics 
+# look for wapCollector function for more usage details;
+:global getCapsStas do={
+  :local staout ({});
+  :local wIfNoise 0;
+  :local wStaNoise 0;
+  :local wStaRssi 0;
+  :local wStaSig0 0;
+  :local wStaSig1 0;
+  :local wIfSig1 0;
+  :local wIfSig0 0;
+  :global rosTsSec;
+  :foreach i,wStaId in=[/caps-man registration-table find where  interface=$1] do={
+      :local wStaMac ([/caps-man registration-table get $wStaId mac-address]);
+      :local wStaRssi ([/caps-man registration-table get $wStaId signal-strength]);
+      :set wStaRssi ([:pick $wStaRssi 0 [:find $wStaRssi "dBm"]]);
+      :set wStaRssi ([:tonum $wStaRssi]);
+      :local wStaNoise ([/caps-man registration-table get $wStaId signal-to-noise]);
+      :set wStaNoise ($wStaRssi - [:tonum $wStaNoise]);
+      :local wStaSig0 ([/caps-man registration-table get $wStaId signal-strength-ch0]);
+      :set wStaSig0 ([:tonum $wStaSig0]);
+      :local wStaSig1 ([/caps-man registration-table get $wStaId signal-strength-ch1]);
+      :set wStaSig1 ([:tonum $wStaSig1]);
+      if ([:len $wStaSig1] = 0) do={
+        :set wStaSig1 0;
+      }
+      :local wStaExpectedRate ([/caps-man registration-table get $wStaId p-throughput]);
+      :local wStaAssocTime ([/caps-man registration-table get $wStaId uptime]);
+      # convert the associated time to seconds
+      :local assocTimeSplit [$rosTsSec $wStaAssocTime];
+      :set wStaAssocTime $assocTimeSplit;
+      # set the interface values
+      :set wIfNoise ($wIfNoise + $wStaNoise);
+      :set wIfSig0 ($wIfSig0 + $wStaSig0);
+      :set wIfSig1 ($wIfSig1 + $wStaSig1);
+      :local wStaIfBytes ([/caps-man registration-table get $wStaId bytes]);
+      :local wStaIfSentBytes ([:pick $wStaIfBytes 0 [:find $wStaIfBytes ","]]);
+      :local wStaIfRecBytes ([:pick $wStaIfBytes 0 [:find $wStaIfBytes ","]]);
+      :local wStaDhcpName ([/ip dhcp-server lease find where mac-address=$wStaMac]);
+      if ($wStaDhcpName) do={
+        :set wStaDhcpName ([/ip dhcp-server lease get $wStaDhcpName host-name]);
+      } else={
+        :set wStaDhcpName "";
+      }
+      :local newSta;
+      :set ($staout->$i) {
+        "mac"=$wStaMac;
+        "expectedRate"=$wStaExpectedRate;
+        "assocTime"=$wStaAssocTime;
+        "noise"=$wStaNoise;
+        "signal0"=$wStaSig0;
+        "signal1"=$wStaSig1;
+        "rssi"=$wStaRssi;
+        "sentBytes"=$wStaIfSentBytes;
+        "recBytes"=$wStaIfRecBytes;
+        "info"=$wStaDhcpName
+      };
+  }
+  :local count [:len $staout];
+  if ($count = 0) do={
+    :set count 1;
+  }
+  :set wIfNoise (-$wIfNoise / $count)
+  :return {
+    "stations"=$staout;
+    "noise"=$wIfNoise;
+    "signal0"=$wIfSig0;
+    "signal1"=$wIfSig1
+  };
 }
 # Function to wap interfaces metrics (work on progress ...)
 # usage:
@@ -327,14 +403,19 @@
   :local cout ({});
   :if (([/caps-man manager print as-value]->"enabled")) do={
     :foreach i,wIfaceId in=[/caps-man interface find] do={
-      # todo 
+      :local ifName [/caps-man interface get $wIfaceId name]; 
+      :local staout [$getWirelessStas $ifName];
+      :local stations ({});
+      :if ([:len ($staout->"stations")] > 0) do={
+        :set stations ($staout->"stations");
+      }
       :set ($cout->$i) {
-        "stations"=({});
-        "interface"=[/caps-man interface get $wIfaceId name];
+        "stations"=$stations;
+        "interface"=$ifName;
         "ssid"=[/caps-man interface get $wIfaceId configuration.ssid];
-        "noise"=-1;
-        "signal0"=-1;
-        "signal1"=-1
+        "noise"=($staout->"noise");
+        "signal0"=($staout->"signal0");
+        "signal1"=($staout->"signal1")
         };
     }
   } else={
