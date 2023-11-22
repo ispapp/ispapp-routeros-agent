@@ -259,45 +259,115 @@
   }
   :return $cout;
 }
+# Function to collect wireless interface stations metrics 
+# look for wapCollector function for more usage details;
+:global getWirelessStas do={
+  :local staout ({});
+  :local wIfNoise 0;
+  :local wStaNoise 0;
+  :local wStaRssi 0;
+  :local wStaSig0 0;
+  :local wStaSig1 0;
+  :local wIfSig1 0;
+  :local wIfSig0 0;
+  :foreach i,wStaId in=[/interface wireless registration-table find where interface=$1] do={
+        :local wStaMac ([/interface wireless registration-table get $wStaId mac-address]);
+        :local wStaRssi ([/interface wireless registration-table get $wStaId signal-strength]);
+        :set wStaRssi ([:pick $wStaRssi 0 [:find $wStaRssi "dBm"]]);
+        :set wStaRssi ([:tonum $wStaRssi]);
+        :set wStaNoise ($wStaRssi - [:tonum [/interface wireless registration-table get $wStaId signal-to-noise]]);
+        :set wStaSig0 ([:tonum [/interface wireless registration-table get $wStaId signal-strength-ch0]]);
+        :set wStaSig1 ([:tonum [/interface wireless registration-table get $wStaId signal-strength-ch1]]);
+        if ([:len $wStaSig1] = 0) do={
+          :set wStaSig1 0;
+        }
+        :local wStaExpectedRate ([/interface wireless registration-table get $wStaId p-throughput]);
+        :local wStaAssocTime ([/interface wireless registration-table get $wStaId uptime]);
+        # convert the associated time to seconds
+        :local assocTimeSplit [$rosTsSec $wStaAssocTime];
+        :set wStaAssocTime $assocTimeSplit;
+        # set the interface values
+        :set wIfNoise ($wIfNoise + $wStaNoise);
+        :set wIfSig0 ($wIfSig0 + $wStaSig0);
+        :set wIfSig1 ($wIfSig1 + $wStaSig1);
+        :local wStaIfBytes ([/interface wireless registration-table get $wStaId bytes]);
+        :local wStaIfSentBytes ([:pick $wStaIfBytes 0 [:find $wStaIfBytes ","]]);
+        :local wStaIfRecBytes ([:pick $wStaIfBytes 0 [:find $wStaIfBytes ","]]);
+        :local wStaDhcpName ([/ip dhcp-server lease find where mac-address=$wStaMac]);
+        if ($wStaDhcpName) do={
+          :set wStaDhcpName ([/ip dhcp-server lease get $wStaDhcpName host-name]);
+        } else={
+          :set wStaDhcpName "";
+        }
+        :local newSta;
+        :set ($staout->$i) {
+          "mac"=$wStaMac;
+          "expectedRate"=$wStaExpectedRate;
+          "assocTime"=$wStaAssocTime;
+          "noise"=$wStaNoise;
+          "signal0"=$wStaSig0;
+          "signal1"=$wStaSig1;
+          "rssi"=$wStaRssi;
+          "sentBytes"=$wStaIfSentBytes;
+          "recBytes"=$wStaIfRecBytes;
+          "info"=$wStaDhcpName
+        };
+      }
+    :return {
+      "stations"=$staout;
+      "noise"=$wIfNoise;
+      "signal0"=$wIfSig0;
+      "signal1"=$wIfSig1
+    };
+}
 # Function to wap interfaces metrics (work on progress ...)
 # usage:
-#    :put [$wapCollector]
-# :global wapCollector do={
-#   :local cout ({});
-#   :if (([/caps-man manager print as-value]->"enabled")) do={
-#     :foreach i,wIfaceId in=[/caps-man interface find] do={
-#       :set ($cout->$i) {
-#         "stations"=[$staJson];
-#         "interface"=[/caps-man interface get $wIfaceId name];
-#         "ssid"=[/caps-man interface get $wIfaceId configuration.ssid];
-#         "noise"=$wIfNoise;
-#         "signal0"=$wIfSig0;
-#         "signal1"=$wIfSig1
-#         };
-#     }
-#   } else={
-#     :if ([/interface/wireless/find] > 0) do={
-#       :foreach i,wIfaceId in=[/interface wireless find] do={
-#         :set ($cout->$i) {
-#           "stations"=[$staJson];
-#           "interface"=[/interface wireless get $wIfaceId name];
-#           "ssid"=[/interface wireless get $wIfaceId ssid];
-#           "noise"=$wIfNoise;
-#           "signal0"=$wIfSig0;
-#           "signal1"=$wIfSig1
-#           };
-#       }
-#     } else={
-#       :foreach i,wIfaceId in=[/interface wifiwave2 find] do={
-#         :set ($cout->$i) {
-#         "stations"=[$staJson];
-#         "interface"=[/interface wifiwave2 get $wIfaceId name];
-#         "ssid"=[/interface wifiwave2 get $wIfaceId configuration.ssid];
-#         "noise"=$wIfNoise;
-#         "signal0"=$wIfSig0;
-#         "signal1"=$wIfSig1
-#         };
-#       }
-#     }
-#   }
-# }
+#   :put [$wapCollector]
+:global wapCollector do={
+  :local cout ({});
+  :if (([/caps-man manager print as-value]->"enabled")) do={
+    :foreach i,wIfaceId in=[/caps-man interface find] do={
+      # todo 
+      :set ($cout->$i) {
+        "stations"=({});
+        "interface"=[/caps-man interface get $wIfaceId name];
+        "ssid"=[/caps-man interface get $wIfaceId configuration.ssid];
+        "noise"=-1;
+        "signal0"=-1;
+        "signal1"=-1
+        };
+    }
+  } else={
+    :if ([:len [/interface/wireless/find]] > 0) do={
+      :foreach i,wIfaceId in=[/interface wireless find] do={
+        :local ifName [/interface wireless get $wIfaceId name]; 
+        :local staout [$getWirelessStas $ifName]
+        :local stations ({});
+        :if ([:len ($staout->"stations")] > 0) do={
+          :set stations ($staout->"stations");
+        }
+        :set ($cout->$i) {
+          "stations"=$stations;
+          "interface"=$ifName;
+          "ssid"=[/interface wireless get $wIfaceId ssid];
+          "noise"=($staout->"noise");
+          "signal0"=($staout->"signal0");
+          "signal1"=($staout->"signal1")
+          };
+      }
+    } else={
+      # todo 
+      :foreach i,wIfaceId in=[/interface wifiwave2 find] do={
+        :set ($cout->$i) {
+        "stations"=({});
+        "interface"=[/interface wifiwave2 get $wIfaceId name];
+        "ssid"=[/interface wifiwave2 get $wIfaceId configuration.ssid];
+        "noise"=-1;
+        "signal0"=-1;
+        "signal1"=-1
+        };
+      }
+    }
+  }
+  :return $cout;
+}
