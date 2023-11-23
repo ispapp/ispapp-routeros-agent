@@ -187,29 +187,6 @@
   :log info "ispapp_credentials updated!";
   :return "ispapp_credentials updated!";
 }
-:put "\t V2 Library loaded! (;";
-# Function to collect data necessary to update request
-:global getcollectUpDataVal do={
-    :local systemArray ({
-        "load"={
-            "one"=$cpuLoad;
-            "five"=$cpuLoad;
-            "fifteen"=$cpuLoad;
-            "processCount"=$processCount
-            };
-        "memory"={
-            "total"=$totalMem;
-            "free"=$freeMem;
-            "buffers"=$memBuffers;
-            "cached"=$cachedMem
-            };
-        "disks":[$diskJsonString];
-        "connDetails":{
-            "connectionFailures"=$connectionFailures
-        }
-    });
-}
-
 # collect cpu load and calculates avrg of 5 and 15
 :global getCpuLoads do={
   :do {
@@ -319,6 +296,12 @@
       :set count 1;
     }
     :set wIfNoise (-$wIfNoise / $count)
+    :set wIfSig0 (-$wIfSig0 / $count)
+    :set wIfSig1 (-$wIfSig1 / $count)
+    :if (!any $wIfNoise) do={:set wIfNoise 0;}
+    :if (!any $wIfSig0) do={:set wIfSig0 0;}
+    :if (!any $wIfSig0) do={:set wIfSig0 0;}
+    :put $wIfNoise;
     :return {
       "stations"=$staout;
       "noise"=$wIfNoise;
@@ -389,6 +372,57 @@
     :set count 1;
   }
   :set wIfNoise (-$wIfNoise / $count)
+  :set wIfSig0 (-$wIfSig0 / $count)
+  :set wIfSig1 (-$wIfSig1 / $count)
+  :if (!any $wIfNoise) do={:set wIfNoise 0;}
+  :if (!any $wIfSig0) do={:set wIfSig0 0;}
+  :if (!any $wIfSig0) do={:set wIfSig0 0;}
+  :return {
+    "stations"=$staout;
+    "noise"=$wIfNoise;
+    "signal0"=$wIfSig0;
+    "signal1"=$wIfSig1
+  };
+}
+# Function to collect Wifiwave2 interface stations metrics 
+# look for wapCollector function for more usage details;
+:global getWifiwave2Stas do={
+  :local staout ({});
+  :local wIfNoise 0;
+  :local wStaNoise 0;
+  :local wStaRssi 0;
+  :local wStaSig0 0;
+  :local wStaSig1 0;
+  :local wIfSig1 0;
+  :local wIfSig0 0;
+  :global rosTsSec;
+  :foreach i,wStaId in=[/interface wifiwave2 registration-table find where interface=$1] do={
+    :local wStaMac ([/interface wifiwave2 registration-table get $wStaId mac-address]);
+    :local wStaRssi ([/interface wifiwave2 registration-table get $wStaId signal]);
+    :set wStaRssi ([:tonum $wStaRssi]);
+    :local wStaAssocTime ([/interface wifiwave2 registration-table get $wStaId uptime]);
+    :local assocTimeSplit [$rosTsSec $wStaAssocTime];
+    :set wStaAssocTime $assocTimeSplit;
+    :local wStaIfBytes ([/interface wifiwave2 registration-table get $wStaId bytes]);
+    :local wStaIfSentBytes ([:pick $wStaIfBytes 0 [:find $wStaIfBytes ","]]);
+    :local wStaIfRecBytes ([:pick $wStaIfBytes 0 [:find $wStaIfBytes ","]]);
+    :local wStaDhcpName ([/ip dhcp-server lease find where mac-address=$wStaMac]);
+    # todo (getting channels signals)
+    if ($wStaDhcpName) do={
+      :set wStaDhcpName ([/ip dhcp-server lease get $wStaDhcpName host-name]);
+    } else={
+      :set wStaDhcpName "";
+    }
+    :local newSta;
+    :set ($staout->$i) {
+      "mac"=$wStaMac;
+      "assocTime"=$wStaAssocTime;
+      "rssi"=$wStaRssi;
+      "sentBytes"=$wStaIfSentBytes;
+      "recBytes"=$wStaIfRecBytes;
+      "info"=$wStaDhcpName
+    };
+  }
   :return {
     "stations"=$staout;
     "noise"=$wIfNoise;
@@ -400,14 +434,20 @@
 # usage:
 #   :put [$wapCollector]
 :global wapCollector do={
+  :global getCapsStas;
+  :global getWirelessStas;
+  :global getWifiwave2Stas;
   :local cout ({});
   :if (([/caps-man manager print as-value]->"enabled")) do={
     :foreach i,wIfaceId in=[/caps-man interface find] do={
-      :local ifName [/caps-man interface get $wIfaceId name]; 
-      :local staout [$getWirelessStas $ifName];
+      :local ifName [/caps-man interface get $wIfaceId name];
+      :local staout;
+      :set staout [$getCapsStas $ifName];
       :local stations ({});
       :if ([:len ($staout->"stations")] > 0) do={
         :set stations ($staout->"stations");
+      } else={
+          :set stations "[]";
       }
       :set ($cout->$i) {
         "stations"=$stations;
@@ -422,10 +462,13 @@
     :if ([:len [/interface/wireless/find]] > 0) do={
       :foreach i,wIfaceId in=[/interface wireless find] do={
         :local ifName [/interface wireless get $wIfaceId name]; 
-        :local staout [$getWirelessStas $ifName]
+        :local staout ({});
+        :set staout [$getWirelessStas $ifName]
         :local stations ({});
         :if ([:len ($staout->"stations")] > 0) do={
           :set stations ($staout->"stations");
+        } else={
+          :set stations "[]";
         }
         :set ($cout->$i) {
           "stations"=$stations;
@@ -437,18 +480,74 @@
           };
       }
     } else={
-      # todo 
       :foreach i,wIfaceId in=[/interface wifiwave2 find] do={
+        :local staout ({});
+        :local ifName [/interface wifiwave2 get $wIfaceId name]; 
+        :set staout [$getWifiwave2Stas $ifName]
+        :local stations ({});
+        :if ([:len ($staout->"stations")] > 0) do={
+          :set stations ($staout->"stations");
+        } else={
+          :set stations "[]";
+        }
         :set ($cout->$i) {
-        "stations"=({});
-        "interface"=[/interface wifiwave2 get $wIfaceId name];
+        "stations"=$stations;
+        "interface"=$ifName;
         "ssid"=[/interface wifiwave2 get $wIfaceId configuration.ssid];
-        "noise"=-1;
-        "signal0"=-1;
-        "signal1"=-1
+        "noise"=($staout->"noise");
+        "signal0"=($staout->"signal0");
+        "signal1"=($staout->"signal1")
         };
       }
     }
   }
   :return $cout;
 }
+# Function to collect SystemMetrics
+# usage:
+#     :put [$getSystemMetrics];
+:global getSystemMetrics do={
+  :global diskMetrics;
+  :global getCpuLoads;
+  :global connectionFailures;
+  :global partitionsMetrics;
+  # todo (no real value here!)
+  :local memBuffers 0;
+  :local cout ({});
+  :local cachedMem 0;
+  # end todo
+  :local processCount [:len [/system script job find]];
+  :local totalMem ([/system resource get total-memory]);
+  :local freeMem ([/system resource get free-memory]);
+  :local cpuload [$getCpuLoads];
+  # return: cpuLoadFifteen=5;cpuLoadFive=7;cpuLoadOne=6
+  :local disks [$diskMetrics];
+  :if ([:len $disks] = 0) do={
+    :set disks "[]";
+  }
+  :local partitions [$partitionsMetrics];
+  :if ([:len $partitionsMetrics] = 0) do={
+    :set partitions "[]";
+  }
+  :set cout {
+    "load"={
+        "one"=($cpuload->"cpuLoadOne");
+        "five"=($cpuload->"cpuLoadFive");
+        "fifteen"=($cpuload->"cpuLoadFifteen");
+        "processCount"=$processCount
+      };
+    "memory"={
+      "total"=$totalMem;
+      "free"=$freeMem;
+      "buffers"=$memBuffers;
+      "cached"=$cachedMem
+      };
+    "disks"=$disks;
+    "partitions"=$partitions;
+    "connDetails"={
+      "connectionFailures"=$connectionFailures
+      }
+    };
+  :return $cout;
+}
+:put "\t V2 Library loaded! (;";
