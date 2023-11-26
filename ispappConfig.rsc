@@ -46,11 +46,6 @@ if (any\$topSmtpPort) do={
     /system script run ispapp_credentials
   }
 }
-:if ([:len [/system script find where name~\"ispappFunction\"]]) do={
-  :if (!any\$fJParse) do={
-    /system script run ispappFunctions
-  }
-}
 :global librayupdateexist false;
 :do {
   :put \"Fetch the last version of ispapp Libraries!\"
