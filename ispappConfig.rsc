@@ -47,16 +47,27 @@ if (any\$topSmtpPort) do={
   }
 }
 :global librayupdateexist false;
+:global librarylastversion \"\";
+:global getVersion;
+# Function to get library versions
+:if  (!any\$getVersion) do={
+  :global getVersion do={
+    :global librariesurl;
+    :local res ([/tool fetch url=\"\$librariesurl\" mode=https output=user as-value]->\"data\"); :local shaindex [:find \$res \"\\\"sha\\\":\\\"\"];
+    :local version [:pick \$res (\$shaindex + 7) (\$shaindex + 47)];
+    :log debug \"found library version: \$version\"
+    :return \$version;
+  }
+}
+# check library version
 :do {
   :put \"Fetch the last version of ispapp Libraries!\"
-  :global librarylastversion;
   :local currentVersion [\$getVersion];
   :if ((any \$currentVersion) && ([:len \$currentVersion] > 30)) do={
     :if (\$currentVersion != \$librarylastversion) do={
       :set librarylastversion \$currentVersion;
       :put \"updating libraries to version \$currentVersion!\";
       :set librayupdateexist true;
-      :put [\$savecredentials];
     }
   }
 } on-error={
@@ -65,31 +76,30 @@ if (any\$topSmtpPort) do={
 # start loading libraries from karim branch.
 :if (([:len [/system/script/find where name~\"ispappLibrary\"]] = 0) || \$librayupdateexist) do={
   :put \"Download and import ispappLibrary.rsc\"
-  :local getVersion do={
-    :global librariesurl;
-    :local res ([/tool fetch url=\"\$librariesurl\" mode=https output=user as-value]->\"data\"); :local shaindex [:find \$res \"\\\"sha\\\":\\\"\"];
-    :local version [:pick \$res (\$shaindex + 7) (\$shaindex + 47)];
-    :log debug \"found library version: \$version\"
-    :return \$version;
-  }
   :do {
     /tool fetch url=\"https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLibrary.rsc\" dst-path=\"ispappLibrary.rsc\"
+    /system/script/remove [/system/script/find where name~\"ispappLibrary\"]
     /import ispappLibrary.rsc
     :delay 3s
     # load libraries
     :foreach lib in=[/system/script/find name~\"ispappLibrary\"] do={ /system/script/run \$lib; }
+    
   } on-error={:put \"Error fetching ispappLibrary.rsc\"; :delay 1s}
 } else={
   :foreach id in=[/system/script/find where name~\"ispappLibrary\"] do={ /system/script/run \$id } 
 }
-
+#----------------- update credentials
+:global savecredentials;
+:if (any \$savecredentials) do={
+  :put [\$savecredentials]; # fix ntp and ssl
+}
 #----------------- agent recovery steps here.
+:global prepareSSL;
 :if (any \$prepareSSL) do={
-  :global prepareSSL;
   :put [\$prepareSSL]; # fix ntp and ssl
 }
+:global TopVariablesDiagnose;
 :if (any \$TopVariablesDiagnose) do={
-  :global TopVariablesDiagnose;
   :put [\$TopVariablesDiagnose]; # fix crendentials 
 }
 
