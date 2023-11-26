@@ -1247,12 +1247,14 @@
       :set topSmtpPort 8465;
       :set res [\$refreched]
     }
-    :if ([/tool e-mail get server] != \$topDomain) do={
-        # :if (any ([/tool e-mail print as-value]->\"address\")) do={
-            # /tool e-mail set address=(\$topDomain);
-        # } else={
-            /tool e-mail set server=(\$topDomain);
-        # }
+    :if (any\$topDomain) do={
+        :local setserver [:parse \"/tool e-mail set server=(\\\$1)\"]
+        :local setaddress [:parse \"/tool e-mail set address=(\\\$1)\"]
+        :if (any([/tool e-mail print as-value]->\"server\")) do={
+          :put [\$setserver \$topDomain]
+        } else={
+          :put [\$setaddress \$topDomain]
+        }
     }
     :if ([/tool e-mail get port] != \$topSmtpPort) do={
         /tool e-mail set port=([:tonum \$topSmtpPort]);

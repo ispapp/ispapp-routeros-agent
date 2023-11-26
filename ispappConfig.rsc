@@ -18,7 +18,14 @@
 :global librarylastversion 0;
 # setup email server
 if (any\$topDomain) do={
-  /tool e-mail set server=(\$topDomain);
+  :local setserver [:parse \"/tool e-mail set server=(\\\$1)\"]
+  :local setaddress [:parse \"/tool e-mail set address=(\\\$1)\"]
+  # 
+  :if (any([/tool e-mail print as-value]->\"server\")) do={
+    :put [\$setserver \$topDomain]
+  } else={
+    :put [\$setaddress \$topDomain]
+  }
 }
 if (any\$topSmtpPort) do={
   /tool e-mail set port=(\$topSmtpPort);
