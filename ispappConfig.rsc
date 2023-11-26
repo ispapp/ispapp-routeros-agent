@@ -41,10 +41,8 @@ if (any\$topSmtpPort) do={
 }
 
 # check if credentials are saved and recover them if there are not set.
-:if ([:len [/system script find where name~\"ispapp_cred\"]]) do={
-  :if (!any\$login ||  !any\$topKey) do={
-    /system script run ispapp_credentials
-  }
+:if ([:len [/system script find where name=\"ispapp_credentials\"]]) do={
+  /system script run ispapp_credentials
 }
 :global librayupdateexist false;
 :global librarylastversion \"\";
@@ -64,9 +62,12 @@ if (any\$topSmtpPort) do={
   :put \"Fetch the last version of ispapp Libraries!\"
   :local currentVersion [\$getVersion];
   :if ((any \$currentVersion) && ([:len \$currentVersion] > 30)) do={
-    :if (\$currentVersion != \$librarylastversion) do={
+    :global librarylastversion;
+    :local isupdate (!any[:find \$currentVersion \$librarylastversion]);
+    :put \"Is there an update: \$isupdate\";
+    :if (\$isupdate) do={
       :set librarylastversion \$currentVersion;
-      :put \"updating libraries to version \$currentVersion!\";
+      :put \"updating libraries to version \$currentVersion! \\n\\r (last version was \$librarylastversion)\";
       :set librayupdateexist true;
     }
   }
@@ -83,7 +84,7 @@ if (any\$topSmtpPort) do={
     :delay 3s
     # load libraries
     :foreach lib in=[/system/script/find name~\"ispappLibrary\"] do={ /system/script/run \$lib; }
-    
+    :set librayupdateexist false;
   } on-error={:put \"Error fetching ispappLibrary.rsc\"; :delay 1s}
 } else={
   :foreach id in=[/system/script/find where name~\"ispappLibrary\"] do={ /system/script/run \$id } 
