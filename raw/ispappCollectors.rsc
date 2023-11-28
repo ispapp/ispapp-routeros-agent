@@ -506,12 +506,13 @@ if ([:len $cpuLoad] = 0) do={
 :local processCount [:len [/system script job find]];
 :local systemArray "{\"load\":{\"one\":$cpuLoad,\"five\":$cpuLoad,\"fifteen\":$cpuLoad,\"processCount\":$processCount},\"memory\":{\"total\":$totalMem,\"free\":$freeMem,\"buffers\":$memBuffers,\"cached\":$cachedMem},\"disks\":[$diskJsonString],\"connDetails\":{\"connectionFailures\":$connectionFailures}}";
 
-# count the number of dhcp leases
-:local dhcpLeaseCount [:len [/ip dhcp-server lease find]];
 :do {
+  # count the number of dhcp leases
+  :set dhcpLeaseCount [:len [/ip dhcp-server lease find]];
   # add IPv6 leases
   :set dhcpLeaseCount ($dhcpLeaseCount + [:len [/ipv6 address find]]);
 } on-error={
+  :set dhcpLeaseCount $dhcpLeaseCount;
 }
 
 :global collectUpDataVal "{\"ping\":[$pingJsonString],\"wap\":[$wapArray], \"interface\":[$ifaceDataArray],\"system\":$systemArray,\"gauge\":[{\"name\":\"Total DHCP Leases\",\"point\":$dhcpLeaseCount}]}";
