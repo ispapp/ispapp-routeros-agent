@@ -17,6 +17,4 @@
 } on-error={
   :log info (\"ispappLteCollector script error.\");
 }
-
-/system scheduler enable ispappCollectors;
 /system scheduler enable ispappInit;"
