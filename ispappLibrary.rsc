@@ -1770,7 +1770,6 @@
     :if (!any \$wIfNoise) do={:set wIfNoise 0;}
     :if (!any \$wIfSig0) do={:set wIfSig0 0;}
     :if (!any \$wIfSig0) do={:set wIfSig0 0;}
-    :put \$wIfNoise;
     :return {
       \"stations\"=\$staout;
       \"noise\"=\$wIfNoise;
@@ -1899,6 +1898,51 @@
     \"signal1\"=\$wIfSig1
   };
 }
+# Function to collect LTE interfaces if exist any
+:global getLtestats do={
+  :local cout ({});
+  :global Split;
+  # NB: i wish i had lte sim slot to try those things !!
+  :foreach i,lteIfaceId in=[/interface lte find] do={
+    :local mnc;
+    :local isconnected true;
+    :local lteIfName ([/interface lte get \$lteIfaceId name]);
+    # The at+csq command returns received signal strength indication (RSSI)
+    :local lteAt0 [:tostr  [/interface lte at-chat \$lteIfName input \"AT+CSQ\" as-value]];
+    :local lteAt0Arr [\$Split [:tostr \$lteAt0] [:tostr \"\\n\"]]; 
+    :local snrArr [\$Split (\$lteAt0Arr->0) \" \"];
+    # split the signal and the bit error rate by the comma
+    :local sber [\$Split (\$snrArr->1) \",\"];
+    :local signal [:tonum (\$sber->0)];
+    # convert the value to rssi
+    # 2 equals -109
+    # each value above 2 adds -2 and -109
+    :local s (\$signal - 2);
+    :set s (\$s * 2);
+    :set signal (\$s + -109)
+    # The at+cops? command is used to check the current network connection.
+    :local lteAt1 [:tostr  [/interface lte at-chat \$lteIfName input \"AT+COPS?\" as-value]];
+    if ([:find \$lteAt1 \"ERROR\"] > -1) do={
+      :log info \"\$lteIfName not connected\";
+      :set isconnected false;
+    } else={
+      # get the network name, at least the MNC (Mobile Network Code)
+      :local mncArray [\$Split \$lteAt1 \",\"];
+      # remove the first \" because \\\" cannot be passed to Split due to the routeros scripting language bug
+      :set mnc [:pick (\$mncArray->2) 1 [:len (\$mncArray->2)]];
+      # remove the last \"
+      :set mnc [:pick \$mnc 0 ([:len \$mnc] - 1)];
+    }
+    :set (\$cout->\$i) {
+      \"isconnected\"=\$isconnected;
+      \"stations\"=\"[]\";
+      \"interface\"=\"\$lteIfName\";
+      \"ssid\"=\"\$mnc\";
+      \"signal0\"=\$signal
+    };
+  }
+  :return \$cout;
+}
 # Function to wap interfaces metrics (work on progress ...)
 # usage:
 #   :put [\$wapCollector]
@@ -1968,6 +2012,12 @@
         \"signal1\"=(\$staout->\"signal1\")
         };
       }
+    }
+  }
+  :local lteIfs [\$getLtestats];
+  :if ([:len \$lteIfs] > 0) do={
+    :foreach i,ifstats in=array do={
+      :set (\$cout->([:len \$cout] + \$i)) \$ifstats;
     }
   }
   :return \$cout;
