@@ -136,20 +136,6 @@
   :delay 3s
 } on-error={:put "Error fetching ispappInit.rsc"; :delay 1s}
 
-:put "Download and import ispappPingCollector.rsc"
-:do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappPingCollector.rsc" dst-path="ispappPingCollector.rsc"
-  /import ispappPingCollector.rsc
-  :delay 3s
-} on-error={:put "Error fetching ispappPingCollector.rsc"; :delay 1s}
-
-:put "Download and import ispappLteCollector.rsc"
-:do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLteCollector.rsc" dst-path="ispappLteCollector.rsc"
-  /import ispappLteCollector.rsc
-  :delay 3s
-} on-error={:put "Error fetching ispappLteCollector.rsc"; :delay 1s}
-
 :put "Download and import ispappCollectors.rsc"
 :do {
   /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappCollectors.rsc" dst-path="ispappCollectors.rsc"
@@ -164,13 +150,6 @@
   :delay 3s
 } on-error={:put "Error fetching ispappUpdate.rsc"; :delay 1s}
 
-:put "ispappAvgCpuCollector.rsc"
-:do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappAvgCpuCollector.rsc" dst-path="ispappAvgCpuCollector.rsc"
-  /import ispappAvgCpuCollector.rsc
-  :delay 3s
-} on-error={:put "Error fetching ispappAvgCpuCollector.rsc"; :delay 1s}
-
 /system script add name=ispappLastConfigChangeTsMs;
 /system script set "ispappLastConfigChangeTsMs" source=":global lastConfigChangeTsMs; :set lastConfigChangeTsMs $lcf;";
 
@@ -181,11 +160,6 @@ add name=ispappInit on-event=ispappInit policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappInit scheduler added")
-
-add interval=60s name=ispappPingCollector on-event=ispappPingCollector policy=\
-    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
-    start-time=startup
-:log debug ("ispappPingCollector scheduler added")
 
 add interval=60s name=ispappCollectors on-event=ispappCollectors policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
