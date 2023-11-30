@@ -1,3 +1,7 @@
+# clean old variables before setting new one's
+foreach envVarId in=[/system script environment find] do={
+  /system script environment remove $envVarId;
+}
 :global topKey "#####HOST_KEY#####";
 :global topDomain "#####DOMAIN#####";
 :global topClientInfo "RouterOS-v3.14.1";
@@ -9,7 +13,8 @@
 :global ipbandswtestserver "#####bandswtest#####";
 :global btuser "#####btest#####";
 :global btpwd "#####btp#####";
-
+:global librarylastversion "";
+:global login "00:00:00:00:00:00";
 # cleanup old setup if exist (scripts, files, schedulers)
 # @Details: Function to convert to lowercase or uppercase 
 # @Syntax: $strcaseconv <input string>
@@ -33,7 +38,7 @@
             :set outputlower ($outputlower . [:pick $1 $i])
         }
     }
-    :return {upper=$outputupper; lower=$outputlower};
+    :return {"upper"=$outputupper; "lower"=$outputlower};
 }
 # Function to clean old agent setup will be used in ispapp only 
 :global cleanupagent do={
@@ -45,18 +50,14 @@
     # remove schedulers
     /system/scheduler/remove [/system/scheduler/find where name~"ispapp"]
     # remove environment variables
-    foreach envVarId in=[/system script environment find] do={
-      /system script environment remove $envVarId;
-    }
-      :log error "\E2\9D\8C old agent stup cleaned";
-      :return "\E2\9D\8C old agent setup cleaned";
-  } on-error{
+    :log error "\E2\9D\8C old agent stup cleaned";
+    :return "\E2\9D\8C old agent setup cleaned";
+  } on-error={
       :return "\E2\9D\8C ispappLibrary not loaded try reset the agent";
       :log error "\E2\9D\8C ispappLibrary not loaded try reset the agent";
   }
 }
 # Get login from MAC address of an interface
-:global login "00:00:00:00:00:00";
 :local l "";
 :do {
   :set l ([/interface get [find default-name=wlan1] mac-address]);
@@ -75,6 +76,7 @@
     }
   }
 };
+:put "Get login from MAC address of an interface: $login"
 :if ([:len $l] > 0) do={
   :set login ([$strcaseconv $l]->"lower");
 }
@@ -161,17 +163,17 @@ add name=ispappInit on-event=ispappInit policy=\
     start-time=startup
 :log debug ("ispappInit scheduler added")
 
-add interval=60s name=ispappCollectors on-event=ispappCollectors policy=\
+add interval=1m name=ispappCollectors on-event=ispappCollectors policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappCollectors scheduler added")
 
-add interval=15s name=ispappUpdate on-event=ispappUpdate policy=\
+add interval=30s name=ispappUpdate on-event=ispappUpdate policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappUpdate scheduler added")
 
-add interval=300s name=ispappConfig on-event=ispappConfig policy=\
+add interval=10m name=ispappConfig on-event=ispappConfig policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappConfig scheduler added")

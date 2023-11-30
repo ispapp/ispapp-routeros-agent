@@ -3,20 +3,16 @@
 if ($sameScriptRunningCount > 1) do={
   :error ("ispappUpdate script already running " . $sameScriptRunningCount . " times");
 }
-
 # include functions
 :global rosTsSec;
 :global Split;
-
 # CMD and fastUpdate
-
 :global updateSequenceNumber;
 :global connectionFailures;
 :global configScriptSuccessSinceInit;
 :global updateScriptSuccessSinceInit;
 :global rosMajorVersion;
 :global rosTimestringSec;
-
 :global topDomain;
 :global topKey;
 :global topListenerPort;
@@ -114,9 +110,6 @@ if ( $updateScriptSuccessSinceInit = false || $configScriptSuccessSinceInit = fa
   :error "HTTP error with /update request, no response receieved.";
 }
 :set updateSequenceNumber ($updateSequenceNumber + 1);
-
-  #:put "parsing json";
-
   :global JSONIn;
   :global JParseOut;
   :global fJParse;
@@ -128,7 +121,6 @@ if ( $updateScriptSuccessSinceInit = false || $configScriptSuccessSinceInit = fa
 
     # show the json output in the log
     #:log info $JParseOut;
-
     :local jsonError ($JParseOut->"error");
 	
 	if ( $jsonError = nil ) do={
@@ -493,75 +485,73 @@ if ( $updateScriptSuccessSinceInit = false || $configScriptSuccessSinceInit = fa
 
   }
 
-        # enable updateFast if set to true
-        :local updateFast ($JParseOut->"updateFast");
-        #:log info ("updateFast: " . $updateFast);
-        :if ( $updateFast = true) do={
-          :do {
-            :local updateSchedulerInterval [/system scheduler get ispappUpdate interval ];
-            :if ($updateSchedulerInterval != "00:00:02") do={
-              /system scheduler set interval=2s "ispappUpdate";
-              /system scheduler set interval=2s "ispappCollectors";
-              /system scheduler set interval=10s "ispappPingCollector";
-            }
-          } on-error={
-          }
-        } else={
-          :do {
+        # # enable updateFast if set to true
+        # :local updateFast ($JParseOut->"updateFast");
+        # :if ( $updateFast = true) do={
+        #   :do {
+        #     :local updateSchedulerInterval [/system scheduler get ispappUpdate interval ];
+        #     :if ($updateSchedulerInterval != "00:00:02") do={
+        #       /system scheduler set interval=10s "ispappUpdate";
+        #       /system scheduler set interval=10s "ispappCollectors";
+        #     }
+        #   } on-error={
+        #   }
+        # } else={
+        #   :do {
 
-              :global lastUpdateOffsetSec;
-              :set lastUpdateOffsetSec ($JParseOut->"lastUpdateOffsetSec");
+        #       :global lastUpdateOffsetSec;
+        #       :set lastUpdateOffsetSec ($JParseOut->"lastUpdateOffsetSec");
 
-              :global lastColUpdateOffsetSec;
-              :set lastColUpdateOffsetSec ($JParseOut->"lastColUpdateOffsetSec");
+        #       :global lastColUpdateOffsetSec;
+        #       :set lastColUpdateOffsetSec ($JParseOut->"lastColUpdateOffsetSec");
 
-              :global updateIntervalSeconds;
-              :global outageIntervalSeconds;
-              :local secUntilNextUpdate (num($updateIntervalSeconds-$lastColUpdateOffsetSec));
-              :local secUntilNextOutage (num($outageIntervalSeconds-$lastUpdateOffsetSec));
-              :local setSec $secUntilNextOutage;
+        #       :global updateIntervalSeconds;
+        #       :global outageIntervalSeconds;
+        #       :local secUntilNextUpdate (num($updateIntervalSeconds-$lastColUpdateOffsetSec));
+        #       :local secUntilNextOutage (num($outageIntervalSeconds-$lastUpdateOffsetSec));
+        #       :local setSec $secUntilNextOutage;
 
-              if ($secUntilNextUpdate <= $setSec + 5) do={
-                # the next update request that is an update not an outage update is when the update must be sent to allow the data to be collected (5 seconds max, on planet)
-                # use updateIntervalSeconds to calculate the setSec
-                :set setSec $secUntilNextUpdate;
-              }
+        #       if ($secUntilNextUpdate <= $setSec + 5) do={
+        #         # the next update request that is an update not an outage update is when the update must be sent to allow the data to be collected (5 seconds max, on planet)
+        #         # use updateIntervalSeconds to calculate the setSec
+        #         :set setSec $secUntilNextUpdate;
+        #       }
 
-              if ($setSec < 2) do={
+        #       if ($setSec < 2) do={
 
-                # don't change the interval to 0, causing the script to no longer run
-                # set to 2
-                :local updateSchedulerInterval [/system scheduler get ispappUpdate interval ];
-                :if ($updateSchedulerInterval != "00:00:02") do={
-                  /system scheduler set interval=2s "ispappUpdate";
-                }
+        #         # don't change the interval to 0, causing the script to no longer run
+        #         # set to 2
+        #         :local updateSchedulerInterval [/system scheduler get ispappUpdate interval ];
+        #         :if ($updateSchedulerInterval != "00:00:02") do={
+        #           /system scheduler set interval=10s "ispappUpdate";
+        #         }
 
-             } else={
+        #      } else={
 
-                # set the update request interval if it is different than what is set
+        #         # set the update request interval if it is different than what is set
     
-                :local updateSchedulerInterval [/system scheduler get ispappUpdate interval];
-                :local tsSec [$rosTsSec $updateSchedulerInterval];
-                :if ($setSec != $tsSec) do={
-                  # set the scheduler to the correct interval
-                  /system scheduler set interval=($setSec) "ispappUpdate";
-                }
+        #         :local updateSchedulerInterval [/system scheduler get ispappUpdate interval];
+        #         :local tsSec [$rosTsSec $updateSchedulerInterval];
+        #         :if ($setSec != $tsSec) do={
+        #           # set the scheduler to the correct interval
+        #           /system scheduler set interval=($setSec) "ispappUpdate";
+        #         }
 
-            }
+        #     }
 
-            :local collSchedulerInterval [/system scheduler get ispappCollectors interval ];
-            :if ($collSchedulerInterval != "00:01:00") do={
-                # set the ispappCollectors interval to default
+        #     :local collSchedulerInterval [/system scheduler get ispappCollectors interval ];
+        #     :if ($collSchedulerInterval != "00:01:00") do={
+        #         # set the ispappCollectors interval to default
     
-                /system scheduler set interval=60s "ispappCollectors";
-                /system scheduler set interval=60s "ispappPingCollector";
-            }
+        #         /system scheduler set interval=60s "ispappCollectors";
+        #         /system scheduler set interval=60s "ispappPingCollector";
+        #     }
 
-          } on-error={
-            :log info ("error parsing update interval");
-          }
+        #   } on-error={
+        #     :log info ("error parsing update interval");
+        #   }
 
-        }
+        # }
 
 }
 }

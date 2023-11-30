@@ -82,7 +82,7 @@ $TopVariablesDiagnose;
     - > `✅  \E2\9C\85 success`
     - > `❌  \E2\9D\8C error`
     - > `⚠️   \E2\9A\A0\EF\B8\8F warning`
-    - > `🟩 \F0\9F\9F\A9 loading`
+    - > `🟩  \F0\9F\9F\A9 loading`
 
 - **_todo_**:
     - **do more tests on the interfaces syhnc function**
