@@ -211,9 +211,11 @@
         };
         :local SecProfileslocalConfigs; 
         :foreach k,secid in=[/interface/wireless/security-profile find] do={
+            :local authtypes [/interface/wireless/security-profile get $secid authentication-types];
+            :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
             :set ($SecProfileslocalConfigs->$k) {
                 "name"=([/interface/wireless/security-profile get $secid name]);
-                "authentication-types"=([/interface/wireless/security-profile get $secid authentication-types]);
+                "authentication-types"=$authtypes;
                 "wpa2-pre-shared-key"=([/interface/wireless/security-profile get $secid wpa2-pre-shared-key]);
                 "technology"="wireless";
                 "wpa-pre-shared-key"=([/interface/wireless/security-profile get $secid wpa-pre-shared-key]);

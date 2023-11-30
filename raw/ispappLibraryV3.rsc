@@ -208,9 +208,11 @@
         };
         :local SecProfileslocalConfigs; 
         :foreach k,secprof in=[/interface wifiwave2 security print as-value] do={
+            :local authtypes ($secprof->"authentication-types");
+            :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
             :set ($SecProfileslocalConfigs->$k) {
                 "name"=($secprof->"name");
-                "authentication-types"=($secprof->"authentication-types");
+                "authentication-types"=$authtypes;
                 "technology"="wifiwave2";
                 "passphrase"=($secprof->"passphrase");
                 "connect-group"=($secprof->"connect-group");
@@ -453,9 +455,11 @@
         };
         :local SecProfileslocalConfigs; 
         :foreach k,secprof in=[/caps-man/security print as-value] do={
+            :local authtypes ($secprof->"authentication-types");
+            :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
             :set ($SecProfileslocalConfigs->$k) {
                 "name"=($secprof->"name");
-                "authentication-types"=($secprof->"authentication-types");
+                "authentication-types"=$authtypes;
                 "wpa2-pre-shared-key"=($secprof->"passphrase");
                 "technology"="cap";
                 "wpa-pre-shared-key"=($secprof->"passphrase");
