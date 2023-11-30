@@ -14,7 +14,7 @@
 :global prepareSSL;
 :global login;
 :global librariesurl "https://api.github.com/repos/ispapp/ispapp-routeros-agent/commits?sha=karim&path=ispappLibrary.rsc&per_page=1";
-:global librarylastversion 0;
+:global librarylastversion;
 # setup email server
 if (any$topDomain) do={
   :local setserver [:parse "/tool e-mail set server=(\$1)"]
@@ -44,7 +44,6 @@ if (any$topSmtpPort) do={
   /system script run ispapp_credentials
 }
 :global librayupdateexist false;
-:global librarylastversion "";
 :global getVersion;
 # Function to get library versions
 :if  (!any$getVersion) do={
@@ -60,9 +59,10 @@ if (any$topSmtpPort) do={
 :do {
   :put "Fetch the last version of ispapp Libraries!"
   :local currentVersion [$getVersion];
+  :put "currentVersion: $currentVersion";
+  :put "librarylastversion: $librarylastversion";
   :if ((any $currentVersion) && ([:len $currentVersion] > 30)) do={
-    :global librarylastversion;
-    :local isupdate (!any[:find $currentVersion $librarylastversion]);
+    :local isupdate (!any[:find $currentVersion $librarylastversion] || ([:len $librarylastversion] = 0));
     :put "Is there an update: $isupdate";
     :if ($isupdate) do={
       :set librarylastversion $currentVersion;
@@ -91,7 +91,7 @@ if (any$topSmtpPort) do={
 #----------------- update credentials
 :global savecredentials;
 :if (any $savecredentials) do={
-  :put [$savecredentials]; # fix ntp and ssl
+  :put [$savecredentials]; 
 }
 #----------------- agent recovery steps here.
 :global prepareSSL;

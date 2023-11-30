@@ -1,5 +1,39 @@
-**$toJson Funtion Usage** ([**_code_**](#_tojson-funtion-usage))
-__Converts a mixed array into a JSON string__
+`#` **Setup**
+
+To facilitate testing of the MikroTik agent, follow the steps below to seamlessly integrate the ISPApp RouterOS agent into your development environment. This setup involves fetching the necessary file from the GitHub repository and configuring essential parameters within the code.
+
+>Step 1: Obtain the ISPApp Library File
+
+1. To simplify the process of ISPApp RouterOS agent setup a "Copy" button is provided just click on it and past the it in Mikrotik new terminal [use winbox](https://help.mikrotik.com/docs/display/ROS/Winbox):
+```routeros
+/tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispapp.rsc" dst-path="ispapp.rsc"; /import ispapp.rsc;
+```
+
+>Step 2: Replace Credentials in the Code
+
+Open the script from `/system/script` and choose `ispapp` script and locate the section containing the following code:
+
+```routeros
+:global topKey "#####HOST_KEY#####";
+:global topDomain "#####DOMAIN#####";
+...
+:global btuser "#####btest#####";
+:global btpwd "#####btp#####";
+```
+
+Replace the placeholder values (`#####HOST_KEY#####`, `#####DOMAIN#####`, `#####btest#####`, `#####btp#####`) with your specific credentials. Update the variables as follows:
+
+- `topKey`: Your host key.
+- `topDomain`: Your domain.
+- `btuser`: Your BTest username.
+- `btpwd`: Your BTest password.
+>Step 3: Click apply after edit and run the script.
+
+
+---
+`#` **$toJson Funtion Usage** ([**_code_**](#_tojson-funtion-usage))
+
+_Converts a mixed array into a JSON string_
 
 ```routeros
 :local mixedArray { 
@@ -13,8 +47,11 @@ __Converts a mixed array into a JSON string__
 }; :local jsonString [$toJson $mixedArray];:put $jsonString;
 ```
 
-**$WirelessInterfacesConfigSync Funtion Usage** ([**_code_**](#_WirelessInterfacesConfigSync-funtion-usage))
-__The function consists of several internal functions, including loginIsOk, getConfig, getLocalWlans, getSecProfile, and others, that handle tasks like SSL preparation, checking login credentials, retrieving configurations, and managing wireless interfaces. The function ultimately aims to synchronize local and remote wireless configurations.__
+
+---
+`#` **$WirelessInterfacesConfigSync Funtion Usage** ([**_code_**](#_WirelessInterfacesConfigSync-funtion-usage))
+
+_The function consists of several internal functions, including loginIsOk, getConfig, getLocalWlans, getSecProfile, and others, that handle tasks like SSL preparation, checking login credentials, retrieving configurations, and managing wireless interfaces. The function ultimately aims to synchronize local and remote wireless configurations._
 
 ```routeros
 # Function to collect all wireless interfaces and format them to be sent to the server.
@@ -32,8 +69,11 @@ __The function consists of several internal functions, including loginIsOk, getC
 };
 ```
 
-**$WirelessInterfacesConfigSync Funtion Usage** ([**_code_**](#_WirelessInterfacesConfigSync-funtion-usage))
-__The function consists of several internal functions, including loginIsOk, getConfig, getLocalWlans, getSecProfile, and others, that handle tasks like SSL preparation, checking login credentials, retrieving configurations, and managing wireless interfaces. The function ultimately aims to synchronize local and remote wireless configurations.__
+
+---
+`#` **$WirelessInterfacesConfigSync Funtion Usage** ([**_code_**](#_WirelessInterfacesConfigSync-funtion-usage))
+
+_The function consists of several internal functions, including loginIsOk, getConfig, getLocalWlans, getSecProfile, and others, that handle tasks like SSL preparation, checking login credentials, retrieving configurations, and managing wireless interfaces. The function ultimately aims to synchronize local and remote wireless configurations._
 
 ```routeros
 # Function to collect all wireless interfaces and format them to be sent to the server.
@@ -51,8 +91,11 @@ __The function consists of several internal functions, including loginIsOk, getC
 };
 ```
 
-**$strcaseconv Funtion Usage** ([**_code_**](#_tojson-funtion-usage))
-__Function to convert to lowercase or uppercase__
+
+---
+`#` **$strcaseconv Funtion Usage** ([**_code_**](#_tojson-funtion-usage))
+
+_Function to convert to lowercase or uppercase_
 
 ```routeros
     :put ([$strcaseconv sdsdFS2k-122nicepp#]->"upper")
@@ -63,8 +106,11 @@ __Function to convert to lowercase or uppercase__
     - > `SDSDFS2K-122NICEPP#`
     - > `sdsdfs2k-122nicepp#`
 
-**$TopVariablesDiagnose Funtion Usage** ([**_code_**](#_tojson-funtion-usage))
-__Function to Diagnose important global variable for agent connection__
+
+---
+`#` **$TopVariablesDiagnose Funtion Usage** ([**_code_**](#_tojson-funtion-usage))
+
+_Function to Diagnose important global variable for agent connection_
 
 ```routeros
 :put [$TopVariablesDiagnose];
@@ -72,7 +118,7 @@ __Function to Diagnose important global variable for agent connection__
 - **_results_**:
     - > `login=00:00:00:00:00:00;topDomain=qwer.ispapp.co;topListenerPort=8550`
 
-__or just__
+_or just_
 
 ```routeros
 $TopVariablesDiagnose;
@@ -83,6 +129,3 @@ $TopVariablesDiagnose;
     - > `❌  \E2\9D\8C error`
     - > `⚠️   \E2\9A\A0\EF\B8\8F warning`
     - > `🟩  \F0\9F\9F\A9 loading`
-
-- **_todo_**:
-    - **do more tests on the interfaces syhnc function**
