@@ -1010,9 +1010,11 @@
         };
         :local SecProfileslocalConfigs; 
         :foreach k,secid in=[/interface/wireless/security-profile find] do={
+            :local authtypes [/interface/wireless/security-profile get \$secid authentication-types];
+            :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
             :set (\$SecProfileslocalConfigs->\$k) {
                 \"name\"=([/interface/wireless/security-profile get \$secid name]);
-                \"authentication-types\"=([/interface/wireless/security-profile get \$secid authentication-types]);
+                \"authentication-types\"=\$authtypes;
                 \"wpa2-pre-shared-key\"=([/interface/wireless/security-profile get \$secid wpa2-pre-shared-key]);
                 \"technology\"=\"wireless\";
                 \"wpa-pre-shared-key\"=([/interface/wireless/security-profile get \$secid wpa-pre-shared-key]);
@@ -2282,9 +2284,11 @@
         };
         :local SecProfileslocalConfigs; 
         :foreach k,secprof in=[/interface wifiwave2 security print as-value] do={
+            :local authtypes (\$secprof->\"authentication-types\");
+            :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
             :set (\$SecProfileslocalConfigs->\$k) {
                 \"name\"=(\$secprof->\"name\");
-                \"authentication-types\"=(\$secprof->\"authentication-types\");
+                \"authentication-types\"=\$authtypes;
                 \"technology\"=\"wifiwave2\";
                 \"passphrase\"=(\$secprof->\"passphrase\");
                 \"connect-group\"=(\$secprof->\"connect-group\");
@@ -2527,9 +2531,11 @@
         };
         :local SecProfileslocalConfigs; 
         :foreach k,secprof in=[/caps-man/security print as-value] do={
+            :local authtypes (\$secprof->\"authentication-types\");
+            :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
             :set (\$SecProfileslocalConfigs->\$k) {
                 \"name\"=(\$secprof->\"name\");
-                \"authentication-types\"=(\$secprof->\"authentication-types\");
+                \"authentication-types\"=\$authtypes;
                 \"wpa2-pre-shared-key\"=(\$secprof->\"passphrase\");
                 \"technology\"=\"cap\";
                 \"wpa-pre-shared-key\"=(\$secprof->\"passphrase\");
