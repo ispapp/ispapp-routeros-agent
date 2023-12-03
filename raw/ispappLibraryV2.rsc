@@ -61,6 +61,21 @@
       }
     }
 }
+# Function to get router board infos if exist;
+:global getRouterboard do={
+  :do {
+    :local boardinfos [/system routerboard print as-value];
+    :return {
+      "mn"=($boardinfos->"model");
+      "sn"=($boardinfos->"serial-number")
+    };
+  } on-error={
+    :return {
+      "mn"="CHR";
+      "sn"="CHR"
+    };
+  }
+}
 # Function to collect all information needed yo be sent to config endpoint
 # usage: 
 #   :put [$getAllConfigs <interfacesinfos array>] 
@@ -69,9 +84,9 @@
 #     "hardwareModel":"$hardwaremodel","hardwareCpuInfo":"$cpu","os":"$os","osBuildDate":$osbuilddate
 #     ,"fw":"$topClientInfo","hostname":"$hostname","interfaces":[$ifaceDataArray],"wirelessConfigured":[$wapArray],
 #     "webshellSupport":true,"bandwidthTestSupport":true,"firmwareUpgradeSupport":true,"wirelessSupport":true}");
-
 :global getAllConfigs do={
     :do {
+        :global getRouterboard;
         :global rosTimestringSec;
         :global toJson;
         :global topClientInfo;
@@ -90,13 +105,16 @@
             };
         }
         :set osbuilddate [:tostr $osbuilddate];
+        :local hdwModelN "";
+        :local hdwSerialN "";
+        
         :set data {
             "clientInfo"=$topClientInfo;
             "osVersion"=[/system resource get version];
             "hardwareMake"=[/system resource get platform];
             "hardwareModel"=[/system resource get board-name];
-            "hardwareModelNumber"=[/system routerboard get model];
-            "hardwareSerialNumber"=[/system routerboard get serial-number];
+            "hardwareModelNumber"=([$getRouterboard]->"mn");
+            "hardwareSerialNumber"=([$getRouterboard]->"sn");
             "hardwareCpuInfo"=[/system resource get cpu];
             "osBuildDate"=[$rosTimestringSec [/system resource get build-time]];
             "hostname"=[/system identity get name];
@@ -171,18 +189,20 @@
   :global ipbandswtestserver;
   :global btuser;
   :global btpwd;
+  :global login;
   :global librarylastversion;
-  /system/script/remove [/system/script/find where name~"ispapp_credentials"]
+  /system/script/remove [find name~"ispapp_credentials"]
   :local cridentials "\n:global topKey $topKey;\r\
     \n:global topDomain $topDomain;\r\
     \n:global topClientInfo $topClientInfo;\r\
     \n:global topListenerPort $topListenerPort;\r\
     \n:global topServerPort $topServerPort;\r\
-    \n:global topSmtpPort $topSmtpPort;;
+    \n:global topSmtpPort $topSmtpPort;\r\
     \n:global txAvg 0;\r\
     \n:global rxAvg 0;\r\
     \n:global ipbandswtestserver $ipbandswtestserver;\r\
     \n:global btuser $btuser;\r\
+    \n:global login $login;\r\
     \n:global librarylastversion $librarylastversion;\r\
     \n:global btpwd $btpwd;"
   /system/script/add name=ispapp_credentials source=$cridentials

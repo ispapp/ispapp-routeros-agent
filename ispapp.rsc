@@ -44,7 +44,7 @@ foreach envVarId in=[/system script environment find] do={
 :global cleanupagent do={
   :do {
     # remove scripts
-    /system/script/remove [/system/script/find where name~"ispapp"]
+    /system/script/remove [find where name~"ispapp"]
     # remove files
     /file/remove [/file/find where name~"ispapp"]
     # remove schedulers
@@ -95,7 +95,7 @@ foreach envVarId in=[/system script environment find] do={
   :global btpwd;
   :global login;
   :global librarylastversion;
-  /system/script/remove [/system/script/find name~"ispapp_credentials"]
+  /system/script/remove [find name~"ispapp_credentials"]
   :local cridentials "\n:global topKey $topKey;\r\
     \n:global topDomain $topDomain;\r\
     \n:global topClientInfo $topClientInfo;\r\
@@ -144,41 +144,32 @@ foreach envVarId in=[/system script environment find] do={
   /import ispappCollectors.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappCollectors.rsc"; :delay 1s}
-
 :put "ispappUpdate.rsc"
 :do {
   /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappUpdate.rsc" dst-path="ispappUpdate.rsc"
   /import ispappUpdate.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappUpdate.rsc"; :delay 1s}
-
 /system script add name=ispappLastConfigChangeTsMs;
 /system script set "ispappLastConfigChangeTsMs" source=":global lastConfigChangeTsMs; :set lastConfigChangeTsMs $lcf;";
-
 :log info ("Starting Mikrotik Script")
-
 /system scheduler
 add name=ispappInit on-event=ispappInit policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappInit scheduler added")
-
 add interval=1m name=ispappCollectors on-event=ispappCollectors policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappCollectors scheduler added")
-
 add interval=30s name=ispappUpdate on-event=ispappUpdate policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappUpdate scheduler added")
-
 add interval=10m name=ispappConfig on-event=ispappConfig policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappConfig scheduler added")
-
 :log info ("Running ispappInit script")
 /system script run ispappInit;
-
 :log info ("Completed Mikrotik Script")
