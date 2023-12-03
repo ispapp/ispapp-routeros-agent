@@ -1557,6 +1557,8 @@
             \"osVersion\"=[/system resource get version];
             \"hardwareMake\"=[/system resource get platform];
             \"hardwareModel\"=[/system resource get board-name];
+            \"hardwareModelNumber\"=[/system routerboard get model];
+            \"hardwareSerialNumber\"=[/system routerboard get serial-number];
             \"hardwareCpuInfo\"=[/system resource get cpu];
             \"osBuildDate\"=[\$rosTimestringSec [/system resource get build-time]];
             \"hostname\"=[/system identity get name];

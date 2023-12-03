@@ -42,9 +42,6 @@ if (\$sameScriptRunningCount > 1) do={
 
   :do {
     :local gatewayStatus ([:tostr [/ip route get [:pick [find dst-address=0.0.0.0/0 active=yes] 0] gateway-status]]);
-
-    #:put \"gatewayStatus: \$gatewayStatus\";
-
     # split the gateway status into
     # IP/NM, reachable status, via, interface
     :local gwStatusArray [\$Split \$gatewayStatus \" \"];
