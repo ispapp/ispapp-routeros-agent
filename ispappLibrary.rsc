@@ -1023,7 +1023,6 @@
                 \"if\"=([/interface/wireless/get \$interfaceid name]);
                 \"ssid\"=([/interface/wireless/get \$interfaceid ssid]);
                 \"key\"=([/interface/wireless/security-profile get [/interface/wireless/get \$interfaceid security-profile] wpa2-pre-shared-key]);
-                # \"keytypes\"=([\$joinArray [\$getkeytypes \$interfaceid] \",\"]);
                 \"technology\"=\"wireless\";
                 \"interface-type\"=([/interface/wireless/get \$interfaceid interface-type]);
                 \"security_profile\"=([/interface/wireless/get \$interfaceid security-profile])
@@ -1242,20 +1241,13 @@
     :global rosMajorVersion;
     :global topListenerPort;
     :local res {\"topListenerPort\"=\$topListenerPort; \"topDomain\"=\$topDomain; \"login\"=\$login};
-    :local refreched do={
-        :global topDomain;
-        :global login;
-        :global topListenerPort;
-        :return {\"topListenerPort\"=\$topListenerPort; \"topDomain\"=\$topDomain; \"login\"=\$login}
-    };
     # try recover the cridentials from the file if exist.
-    :if ([:len [/file find name=ispapp_cridentials]] > 0) do={
-        [[:parse [/file get [/file find where name~\"ispapp_cridentials\"] contents]]]
+    :if ([:len [/system script find name~\"ispapp_cridentials\"]] > 0) do={
+        /system script run [find name~\"ispapp_cridentials\"];
     }
     # Check if topListenerPort is not set and assign a default value if not set
     :if (!any \$topListenerPort) do={
       :set topListenerPort 8550;
-      :set res [\$refreched];
     }
     :if ((!any \$startEncode) || (!any \$isSend)) do={
         :set startEncode 1;
@@ -1264,11 +1256,9 @@
     # Check if topDomain is not set and assign a default value if not set
     :if (!any \$topDomain) do={
       :set topDomain \"qwer.ispapp.co\"
-      :set res [\$refreched];
     }
     :if (!any \$topSmtpPort) do={
       :set topSmtpPort 8465;
-      :set res [\$refreched]
     }
     :if (any\$topDomain) do={
         :local setserver [:parse \"/tool e-mail set server=(\\\$1)\"]
@@ -1279,10 +1269,10 @@
           :put [\$setaddress \$topDomain]
         }
     }
-    :if ([/tool e-mail get port] != \$topSmtpPort) do={
+    :if (any\$topSmtpPort && ([/tool e-mail get port] != \$topSmtpPort)) do={
         /tool e-mail set port=([:tonum \$topSmtpPort]);
     }
-    :if (!any \$rosMajorVersion) do={
+    :if (!any\$rosMajorVersion) do={
         :local ROSver value=[:tostr [/system resource get value-name=version]];
         :local ROSverH value=[:pick \$ROSver 0 ([:find \$ROSver \".\" -1]) ];
         :set rosMajorVersion value=[:tonum \$ROSverH];
@@ -1291,6 +1281,7 @@
             :log info [\$settls];
         }
     }
+  :set res {\"topListenerPort\"=\$topListenerPort; \"topDomain\"=\$topDomain; \"login\"=\$login};
   :return \$res;
 }
 
@@ -2276,7 +2267,6 @@
                 \"if\"=(\$wifiwave->\"name\");
                 \"ssid\"=(\$currentconfigs->\"ssid\");
                 \"key\"=(\$getsecurity->\"passphrase\");
-                # \"keytypes\"=(\$getsecurity->\"authentication-types\");
                 \"technology\"=\"wifiwave2\";
                 \"manager\"=(\$getsecurity->\"manager\");
                 \"security_profile\"=(\$currentconfigs->\"security\")
@@ -2523,7 +2513,6 @@
                 \"if\"=(\$mancap->\"name\");
                 \"ssid\"=(\$currentconfigs->\"ssid\");
                 \"key\"=(\$getsecurity->\"passphrase\");
-                # \"keytypes\"=(\$getsecurity->\"authentication-types\");
                 \"technology\"=\"cap\";
                 \"channel\"=[:tostr (\$mancap->\"channel\")];
                 \"security_profile\"=(\$currentconfigs->\"security\")
