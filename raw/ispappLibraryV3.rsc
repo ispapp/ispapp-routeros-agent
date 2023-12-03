@@ -200,7 +200,7 @@
                 "if"=($wifiwave->"name");
                 "ssid"=($currentconfigs->"ssid");
                 "key"=($getsecurity->"passphrase");
-                "keytypes"=($getsecurity->"authentication-types");
+                # "keytypes"=($getsecurity->"authentication-types");
                 "technology"="wifiwave2";
                 "manager"=($getsecurity->"manager");
                 "security_profile"=($currentconfigs->"security")
@@ -447,7 +447,7 @@
                 "if"=($mancap->"name");
                 "ssid"=($currentconfigs->"ssid");
                 "key"=($getsecurity->"passphrase");
-                "keytypes"=($getsecurity->"authentication-types");
+                # "keytypes"=($getsecurity->"authentication-types");
                 "technology"="cap";
                 "channel"=[:tostr ($mancap->"channel")];
                 "security_profile"=($currentconfigs->"security")

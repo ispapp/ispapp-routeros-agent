@@ -61,4 +61,64 @@
     :set cout [$toJson $cout]
     :return $cout;
 };
+# Function to remove special chars (\n, \r, \t) from strings;
+# usages:
+#   :put [$removeSpecialCharacters  [:tostr "Hello\nWorld!\r\t"]]
+#   :put [:toarray [$removeSpecialCharacters ([/tool fetch url="https://cloudflare.com/cdn-cgi/trace" mode=http as-value output=user]->"data") t=";"]];
+:global removeSpecialCharacters do={
+  :local inputString $1;
+  :local splitern $n;
+  :local spliters $s;
+  :local splitert $t;
+  :local cleanString "";
+  :local charcode "";
+  :local lastidx 0;
+  :local char [:convert [:tostr $inputString] to=hex];
+  :for i from=2 to=[:len $char] step=2 do={
+    :set charcode [:pick $char $lastidx $i];
+    :if ($charcode != "0a" && $charcode != "0d" && $charcode != "09") do={
+        :set cleanString ($cleanString . $charcode);
+    } else={
+        :if (any$splitern) do={
+            :set cleanString ($cleanString . [:convert [:tostr $splitern] to=hex]);
+        }
+        :if (any$splitern) do={
+            :set cleanString ($cleanString . [:convert [:tostr $splitern] to=hex]);
+        }
+        :if (any$splitert) do={
+            :set cleanString ($cleanString . [:convert [:tostr $splitert] to=hex]);
+        }
+    }
+    :set lastidx $i;
+  }
+  :return [:convert $cleanString from=hex];
+}
+
+# Function to get wanIp
+# usage:
+#   :put [$getWanIp]
+:global getWanIp do={
+    # WAN Port IP Address
+    :local wanIp;
+    # Check for PPPoE interface
+    :local pppoeInterface [/interface pppoe-client find where running=yes disabled=no]
+    :if ([:len $pppoeInterface] > 0) do={
+      :set wanIp [ip address get [find where interface=[/interface pppoe-client get ($pppoeInterface->0) name]] address]
+    } else={
+      # Check for DHCP client
+      :local dhcpClientIp [/ip dhcp-client get [find where status=bound] address]
+      :if ([:len $dhcpClientIp] > 0) do={
+        :set wanIp $dhcpClientIp;
+      } else={
+        # Check for IP address on the first Ethernet interface
+        # get the first running ether interface name and find the matched ip address in that same vlan
+        :set wanIp [:tostr [/ip address get [ find where interface=[/interface get ([find where running=yes type=ether]->0) name]] address]];
+        # If none of the above, try using external service to determine public IP
+        :if ([:len $wanIp] = 0) do={
+          :set wanIp "";
+        }
+      }
+    }
+    :return [:pick $wanIp 0 [:find $wanIp "/"]];
+}
 :put "\t V4 Library loaded! (;";

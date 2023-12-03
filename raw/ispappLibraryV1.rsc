@@ -2,6 +2,26 @@
 # for checking purposes
 :global ispappLibraryV1 "ispappLibraryV1 loaded";
 :global login;
+# Function to join array elements with a specified delimiter
+# Example usage:
+# :put [$joinArray ["a" "b" "c"] " - "] // returns "a - b - c"
+:global joinArray do={
+    :local inputArray ($1)
+    :local delimiter ($2)
+    :local outputString ""
+    if ([:typeof $inputArray] != "array") do={
+        :return [:tostr $inputArray]
+    }
+    :foreach k,i in=$inputArray do={
+        if ($k = 0) do={
+            :set outputString ($outputString .  $i);
+        } else={
+            :set outputString ($outputString . $2 .  $i);
+        }
+    }
+    :return $outputString;
+}
+
 # Function to collect all wireless interfaces and format them to be sent to server.
 # @param $topDomain - domain of the server
 # @param $topKey - key of the server
@@ -14,6 +34,7 @@
 # @return $message - message of the operation
 :global WirelessInterfacesConfigSync do={
     :global getAllConfigs;
+    :global joinArray;
     :global ispappHTTPClient;
     :local getConfig do={
         # get configuration from the server
@@ -203,7 +224,7 @@
                 "if"=([/interface/wireless/get $interfaceid name]);
                 "ssid"=([/interface/wireless/get $interfaceid ssid]);
                 "key"=([/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa2-pre-shared-key]);
-                "keytypes"=([$joinArray [$getkeytypes $interfaceid] ","]);
+                # "keytypes"=([$joinArray [$getkeytypes $interfaceid] ","]);
                 "technology"="wireless";
                 "interface-type"=([/interface/wireless/get $interfaceid interface-type]);
                 "security_profile"=([/interface/wireless/get $interfaceid security-profile])
@@ -576,27 +597,6 @@
         }
     }
     :return $outputTypes;
-}
-
-# Function to join array elements with a specified delimiter
-# Example usage:
-# :put [$joinArray ["a" "b" "c"] " - "] // returns "a - b - c"
-
-:global joinArray do={
-    :local inputArray ($1)
-    :local delimiter ($2)
-    :local outputString ""
-    if ([:typeof $inputArray] != "array") do={
-        :return [:tostr $inputArray]
-    }
-    :foreach k,i in=$inputArray do={
-        if ($k = 0) do={
-            :set outputString ($outputString .  $i);
-        } else={
-            :set outputString ($outputString . $2 .  $i);
-        }
-    }
-    :return $outputString;
 }
 
 # Ispapp HTTP Client
