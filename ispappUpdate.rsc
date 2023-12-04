@@ -326,9 +326,7 @@ if ( \$updateScriptSuccessSinceInit = false || \$configScriptSuccessSinceInit = 
         :log info (\"HTTP Error, no response for /update request with command error to ISPApp.\");
       }
       :set updateSequenceNumber (\$updateSequenceNumber + 1);
-
       #:put \$cmdResponse;
-
       # delete command output file
       /file remove \$outputFilename;
 
@@ -358,10 +356,8 @@ if ( \$updateScriptSuccessSinceInit = false || \$configScriptSuccessSinceInit = 
 
       # make the request body
       :set cmdJsonData \"{\\\"ws_id\\\":\\\"\$wsid\\\",\\\"uuidv4\\\":\\\"\$uuidv4\\\",\\\"stdout\\\":\\\"\$output\\\",\\\"sequenceNumber\\\":\$updateSequenceNumber}\";
-
       #:put \$cmdJsonData;
       #:log info (\"ispapp command response json: \" . \$cmdJsonData);
-
       # make the request
       :do {
         :local cmdResponse ([/tool fetch check-certificate=yes mode=https http-method=post http-header-field=\"cache-control: no-cache, content-type: application/json\" http-data=\"\$cmdJsonData\" url=\$updateUrl as-value output=user]);
