@@ -36,6 +36,7 @@
     :local cout ({});
     :global getSystemMetrics;
     :global wapCollector;
+    :global toJson;
     :global collectInterfacesMetrics;
     :global getCpuLoads;
     :local wapArray [$wapCollector];
@@ -120,5 +121,23 @@
       }
     }
     :return [:pick $wanIp 0 [:find $wanIp "/"]];
+}
+:global getUpdateBody do={
+  :global getCollections;
+  :global rosTsSec;
+  :global getWanIp;
+  :global toJson;
+  :local upTime [/system resource get uptime];
+  :local runcount 1;
+  :set upTime [$rosTsSec $upTime];
+  :if ([:len [/system/script/find where name~"ispappUpdate"]] > 0) do={
+    :set runcount [/system/script/get ispappUpdate run-count];
+  }
+  :return [$toJson ({
+    "collectors"=[$getCollections];
+    "wanIp"=[$getWanIp];
+    "uptime"=$upTime;
+    "sequenceNumber"=$runcount
+  })];
 }
 :put "\t V4 Library loaded! (;";
