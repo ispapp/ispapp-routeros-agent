@@ -2,7 +2,7 @@
 
 To facilitate testing of the MikroTik agent, follow the steps below to seamlessly integrate the ISPApp RouterOS agent into your development environment. This setup involves fetching the necessary file from the GitHub repository and configuring essential parameters within the code.
 
->Step 1: Obtain the ISPApp Library File
+>Step 1: Obtain the ISPApp setup File
 
 1. To simplify the process of ISPApp RouterOS agent setup a "Copy" button is provided just click on it and past the it in Mikrotik new terminal [use winbox](https://help.mikrotik.com/docs/display/ROS/Winbox):
 ```routeros
@@ -71,25 +71,24 @@ _The function consists of several internal functions, including loginIsOk, getCo
 
 
 ---
-`#` **$WirelessInterfacesConfigSync Funtion Usage** ([**_code_**](#_WirelessInterfacesConfigSync-funtion-usage))
+`#` **$ispappHTTPClient Funtion Usage** ([**_code_**](#_ispappHTTPClient-funtion-usage))
+_The **Ispapp HTTP Client** is designed to interact with the ISPApp service using HTTP requests. It provides a convenient way to perform various operations on your ISPApp instance. Here's how you can use it:_
 
-_The function consists of several internal functions, including loginIsOk, getConfig, getLocalWlans, getSecProfile, and others, that handle tasks like SSL preparation, checking login credentials, retrieving configurations, and managing wireless interfaces. The function ultimately aims to synchronize local and remote wireless configurations._
+_`Usage`_
+_To use the Ispapp HTTP Client, follow this syntax:_
+```:put [$ispappHTTPClient m=<get|post|put|delete> a=<update|config> b=<json>]```
 
-```routeros
-# Function to collect all wireless interfaces and format them to be sent to the server.
-# @param $topDomain - domain of the server
-# @param $topKey - key of the server
-# @param $topListenerPort - port of the server
-# @param $login - login of the server
-# @param $password - password of the server
-# @param $prepareSSL - if true, SSL preparation will be done
-# @return $wlans - array of wireless interfaces
-# @return $status - status of the operation
-# @return $message - message of the operation
-:global WirelessInterfacesConfigSync do={
-    # (..function content..)
-};
-```
+ - Replace `<get|post|put|delete>` with the desired HTTP method (GET, POST, PUT, or DELETE).
+ - Replace `<update|config>` with the specific action you want to perform (e.g., update configuration settings).
+ - Replace `<json>` with the relevant JSON data for your request.
+
+_`Examples`_
+  1. **Get Data**:
+   ```:put [$ispappHTTPClient m=get a=data b={}]```
+  2. **Update Configuration**:
+   ```:put [$ispappHTTPClient m=put a=config b={"key": "value"}]```
+  3. **Delete Record**:
+   ```:put [$ispappHTTPClient m=delete a=record b={"id": 123}]```
 
 
 ---

@@ -302,14 +302,14 @@
         :local newSta;
         :set ($staout->$i) {
           "mac"=$wStaMac;
-          "expectedRate"=$wStaExpectedRate;
-          "assocTime"=$wStaAssocTime;
-          "noise"=$wStaNoise;
-          "signal0"=$wStaSig0;
-          "signal1"=$wStaSig1;
-          "rssi"=$wStaRssi;
-          "sentBytes"=$wStaIfSentBytes;
-          "recBytes"=$wStaIfRecBytes;
+          "expectedRate"=([:tonum $wStaExpectedRate]);
+          "assocTime"=([:tonum $wStaAssocTime]);
+          "noise"=([:tonum $wStaNoise]);
+          "signal0"=([:tonum $wStaSig0]);
+          "signal1"=([:tonum $wStaSig1]);
+          "rssi"=([:tonum $wStaRssi]);
+          "sentBytes"=([:tonum $wStaIfSentBytes]);
+          "recBytes"=([:tonum $wStaIfRecBytes]);
           "info"=$wStaDhcpName
         };
       }
@@ -378,13 +378,13 @@
       :set ($staout->$i) {
         "mac"=$wStaMac;
         "expectedRate"=$wStaExpectedRate;
-        "assocTime"=$wStaAssocTime;
+        "assocTime"=([:tonum $wStaAssocTime]);
         "noise"=$wStaNoise;
         "signal0"=$wStaSig0;
         "signal1"=$wStaSig1;
         "rssi"=$wStaRssi;
-        "sentBytes"=$wStaIfSentBytes;
-        "recBytes"=$wStaIfRecBytes;
+        "sentBytes"=([:tonum $wStaIfSentBytes]);
+        "recBytes"=([:tonum $wStaIfRecBytes]);
         "info"=$wStaDhcpName
       };
   }
@@ -437,10 +437,10 @@
     :local newSta;
     :set ($staout->$i) {
       "mac"=$wStaMac;
-      "assocTime"=$wStaAssocTime;
+      "assocTime"=([:tonum $wStaAssocTime]);
       "rssi"=$wStaRssi;
-      "sentBytes"=$wStaIfSentBytes;
-      "recBytes"=$wStaIfRecBytes;
+      "sentBytes"=([:tonum $wStaIfSentBytes]);
+      "recBytes"=([:tonum $wStaIfRecBytes]);
       "info"=$wStaDhcpName
     };
   }

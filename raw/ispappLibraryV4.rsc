@@ -25,10 +25,10 @@
     :set percentage (100 - $percentage);
     :return ({
         "host"="$topDomain";
-        "avgRtt"=([:tostr $avgRtt]);
-        "loss"=$percentage;
-        "minRtt"=([:tostr $minRtt]);
-        "maxRtt"=([:tostr $maxRtt])
+        "avgRtt"=([:tonum $avgRtt]);
+        "loss"=([:tonum $percentage]);
+        "minRtt"=([:tonum $minRtt]);
+        "maxRtt"=([:tonum $maxRtt])
     });
 }
 # Function to join all collectect metrics
@@ -43,7 +43,8 @@
     :local dhcpLeaseCount 0;
     :local systemArray [$getSystemMetrics];
     :local ifaceDataArray [$collectInterfacesMetrics];
-    :local pings [$getPingingMetrics];
+    :local pings ({});
+    :local gauge ({});
     :do {
         # count the number of dhcp leases
         :set dhcpLeaseCount [:len [/ip dhcp-server lease find]];
@@ -52,14 +53,17 @@
     } on-error={
         :set dhcpLeaseCount $dhcpLeaseCount;
     }
+    :set ($gauge->0) ({"name"="Total DHCP Leases"; "point"=$dhcpLeaseCount});
+    :set ($pings->0) ([$getPingingMetrics]);
+    :put $pings;
     :set cout {
-        "ping"=[$pings];
-        "wap"=[$wapArray];
-        "interface"=[$ifaceDataArray];
+        "ping"=$pings;
+        "wap"=$wapArray;
+        "interface"=$ifaceDataArray;
         "system"=$systemArray;
-        "gauge"=({"name"="Total DHCP Leases"; "point"=$dhcpLeaseCount})
+        "gauge"=$gauge
         };
-    :set cout [$toJson $cout]
+    # :set cout [$toJon $cout]
     :return $cout;
 };
 # Function to remove special chars (\n, \r, \t) from strings;
@@ -122,6 +126,7 @@
     }
     :return [:pick $wanIp 0 [:find $wanIp "/"]];
 }
+# Function to construct update request
 :global getUpdateBody do={
   :global getCollections;
   :global rosTsSec;
@@ -136,8 +141,23 @@
   :return [$toJson ({
     "collectors"=[$getCollections];
     "wanIp"=[$getWanIp];
-    "uptime"=$upTime;
+    "uptime"=([:tonum $upTime]);
     "sequenceNumber"=$runcount
   })];
+}
+# Function to send update request and get back update responce
+:global sendUpdate do={
+  :global ispappHTTPClient;
+  :global getUpdateBody;
+  :local responce ({});
+  :local requestBody "{}";
+  :do {
+    :set requestBody [$getUpdateBody];
+    :set responce [$ispappHTTPClient m=post a=update b=$requestBody];
+    :put $requestBody;
+    :return $responce;
+  } on-error={
+
+  }
 }
 :put "\t V4 Library loaded! (;";
