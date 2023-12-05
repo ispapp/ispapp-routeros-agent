@@ -1069,6 +1069,14 @@
         });
     }
 };
+# Function to Download and return parsed RSADV CA.
+:global latestCerts do={
+    :local SectigoRSADVBundle;
+    :set SectigoRSADVBundle [/tool  fetch http-method=get mode=https url=\"https://gogetssl-cdn.s3.eu-central-1.amazonaws.com/wiki/SectigoRSADVBundle.txt\"  as-value output=user];
+    :set SectigoRSADVBundle (\$SectigoRSADVBundle->\"data\")
+    :set SectigoRSADVBundle [:pick \$SectigoRSADVBundle 0 ([:find \$SectigoRSADVBundle \"-----END CERTIFICATE-----\"] + 26)];
+    :return { \"DV\"=\$SectigoRSADVBundle }
+};
 
 # Function to prepare ssl connection to ispappHTTPClient
 # 1- check ntp client status if synced with google/apple ntp servers.
@@ -1078,7 +1086,6 @@
 #   20- download and install the latest bundle if not exists.
 #   21- install the latest bundle if not valid.
 #   23- if bundle is not installed, then exit the function with false in caStatus key value.
-
 :global prepareSSL do={
     :global ntpStatus false;
     :global caStatus false;
@@ -1124,29 +1131,15 @@
                 :set ntpStatus true;
             }
         }
-        :local latestCerts do={
-            # Download and return parsed CAs.
-            :local data [/tool  fetch http-method=get mode=https url=\"https://gogetssl-cdn.s3.eu-central-1.amazonaws.com/wiki/SectigoRSADVBundle.txt\"  as-value output=user];
-            :local data0 [:pick (\$data->\"data\") 0 ([:find (\$data->\"data\") \"-----END CERTIFICATE-----\"] + 26)]; 
-            :return { \"DV\"=\$data0 }
-        };
         # function to add to install downloaded bundle.
         :local addDv do={
+            :global latestCerts;
             :local currentcerts [\$latestCerts];
-            :put (\"adding DV cert: \\n\" . (\$currentcerts->\"DV\") . \"\\n\");
-            if (([:len [/file find where name~\"ispapp.co_SectigoRSADVBundle\"]] = 0)) do={
+            # :put (\"adding DV cert: \\n\" . (\$currentcerts->\"DV\") . \"\\n\");
+            /file remove [find name~\"ispapp.co_Sec\"];
             /file add name=ispapp.co_SectigoRSADVBundle.txt contents=(\$currentcerts->\"DV\");
             /certificate import name=ispapp.co_SectigoRSADVBundle file=ispapp.co_SectigoRSADVBundle.txt;
-            } else={
-                /file set [/file find where name=ispapp.co_SectigoRSADVBundle.txt] contents=(\$currentcerts->\"DV\");
-                /certificate import name=ispapp.co_SectigoRSADVBundle file=ispapp.co_SectigoRSADVBundle.txt;
-            }
         };
-        :do {
-            [\$addDv];
-        } on-error={
-            :put \"error adding DV cert \\n\";
-        }
         :local retries 0;
         :do { 
             :local addDVres [\$addDv];
@@ -1232,14 +1225,22 @@
 # @Syntax: \$TopVariablesDiagnose
 # @Example: :put [\$TopVariablesDiagnose] or just \$TopVariablesDiagnose
 :global TopVariablesDiagnose do={
+    :global prepareSSL;
+    :local sslPreparation [\$prepareSSL];
     :global topDomain;
     :global topKey;
     :global login;
+    :global certCheck \"no\";
     :global topSmtpPort;
     :global startEncode;
     :global isSend;
     :global rosMajorVersion;
     :global topListenerPort;
+    # check if method argument is provided
+    if ((\$sslPreparation->\"ntpStatus\" = true) && (\$sslPreparation->\"caStatus\" = true)) do={
+        :set certCheck \"yes\";
+        :log info \"ssl preparation is completed with success!\";
+    }
     :local res {\"topListenerPort\"=\$topListenerPort; \"topDomain\"=\$topDomain; \"login\"=\$login};
     # try recover the cridentials from the file if exist.
     :if ([:len [/system script find name~\"ispapp_cridentials\"]] > 0) do={
@@ -1391,28 +1392,24 @@
 
 # Ispapp HTTP Client
 # Usage:
-# :put [\$ispappHTTPClient m=<get|post|put|delete> a=<update|config> b=<json>]
+#   :put [\$ispappHTTPClient m=<get|post|put|delete> a=<update|config> b=<json>]
 :global ispappHTTPClient do={
-    :global prepareSSL;
-    :local sslPreparation [\$prepareSSL];
     :local method \$m; # method
     :local action \$a; # action
     :local body \$b; # body
-    :local certCheck \"no\";
+    :local certCheck;
     :global topDomain;
     :global topKey;
     :global login;
     :global topListenerPort;
+    :if (!any\$certCheck) do={
+        
+        :set certCheck \"no\";
+    }
     # get current time and format it
     :local time [/system clock print as-value];
     :local formattedTime ((\$time->\"date\") . \" | \" . (\$time->\"time\"));
     :local actions (\"update\", \"config\");
-    # check if method argument is provided
-    if ((\$sslPreparation->\"ntpStatus\" = true) && (\$sslPreparation->\"caStatus\" = true)) do={
-        :set certCheck \"yes\";
-        :log info \"ssl preparation is completed with success!\";
-    }
-    
     if (!any \$m) do={
         :local method \"get\";
     }
@@ -1764,14 +1761,14 @@
         :local newSta;
         :set (\$staout->\$i) {
           \"mac\"=\$wStaMac;
-          \"expectedRate\"=\$wStaExpectedRate;
-          \"assocTime\"=\$wStaAssocTime;
-          \"noise\"=\$wStaNoise;
-          \"signal0\"=\$wStaSig0;
-          \"signal1\"=\$wStaSig1;
-          \"rssi\"=\$wStaRssi;
-          \"sentBytes\"=\$wStaIfSentBytes;
-          \"recBytes\"=\$wStaIfRecBytes;
+          \"expectedRate\"=([:tonum \$wStaExpectedRate]);
+          \"assocTime\"=([:tonum \$wStaAssocTime]);
+          \"noise\"=([:tonum \$wStaNoise]);
+          \"signal0\"=([:tonum \$wStaSig0]);
+          \"signal1\"=([:tonum \$wStaSig1]);
+          \"rssi\"=([:tonum \$wStaRssi]);
+          \"sentBytes\"=([:tonum \$wStaIfSentBytes]);
+          \"recBytes\"=([:tonum \$wStaIfRecBytes]);
           \"info\"=\$wStaDhcpName
         };
       }
@@ -1840,13 +1837,13 @@
       :set (\$staout->\$i) {
         \"mac\"=\$wStaMac;
         \"expectedRate\"=\$wStaExpectedRate;
-        \"assocTime\"=\$wStaAssocTime;
+        \"assocTime\"=([:tonum \$wStaAssocTime]);
         \"noise\"=\$wStaNoise;
         \"signal0\"=\$wStaSig0;
         \"signal1\"=\$wStaSig1;
         \"rssi\"=\$wStaRssi;
-        \"sentBytes\"=\$wStaIfSentBytes;
-        \"recBytes\"=\$wStaIfRecBytes;
+        \"sentBytes\"=([:tonum \$wStaIfSentBytes]);
+        \"recBytes\"=([:tonum \$wStaIfRecBytes]);
         \"info\"=\$wStaDhcpName
       };
   }
@@ -1899,10 +1896,10 @@
     :local newSta;
     :set (\$staout->\$i) {
       \"mac\"=\$wStaMac;
-      \"assocTime\"=\$wStaAssocTime;
+      \"assocTime\"=([:tonum \$wStaAssocTime]);
       \"rssi\"=\$wStaRssi;
-      \"sentBytes\"=\$wStaIfSentBytes;
-      \"recBytes\"=\$wStaIfRecBytes;
+      \"sentBytes\"=([:tonum \$wStaIfSentBytes]);
+      \"recBytes\"=([:tonum \$wStaIfRecBytes]);
       \"info\"=\$wStaDhcpName
     };
   }
@@ -2656,10 +2653,10 @@
     :set percentage (100 - \$percentage);
     :return ({
         \"host\"=\"\$topDomain\";
-        \"avgRtt\"=([:tostr \$avgRtt]);
-        \"loss\"=\$percentage;
-        \"minRtt\"=([:tostr \$minRtt]);
-        \"maxRtt\"=([:tostr \$maxRtt])
+        \"avgRtt\"=([:tonum \$avgRtt]);
+        \"loss\"=([:tonum \$percentage]);
+        \"minRtt\"=([:tonum \$minRtt]);
+        \"maxRtt\"=([:tonum \$maxRtt])
     });
 }
 # Function to join all collectect metrics
@@ -2674,7 +2671,8 @@
     :local dhcpLeaseCount 0;
     :local systemArray [\$getSystemMetrics];
     :local ifaceDataArray [\$collectInterfacesMetrics];
-    :local pings [\$getPingingMetrics];
+    :local pings ({});
+    :local gauge ({});
     :do {
         # count the number of dhcp leases
         :set dhcpLeaseCount [:len [/ip dhcp-server lease find]];
@@ -2683,14 +2681,17 @@
     } on-error={
         :set dhcpLeaseCount \$dhcpLeaseCount;
     }
+    :set (\$gauge->0) ({\"name\"=\"Total DHCP Leases\"; \"point\"=\$dhcpLeaseCount});
+    :set (\$pings->0) ([\$getPingingMetrics]);
+    :put \$pings;
     :set cout {
-        \"ping\"=[\$pings];
-        \"wap\"=[\$wapArray];
-        \"interface\"=[\$ifaceDataArray];
+        \"ping\"=\$pings;
+        \"wap\"=\$wapArray;
+        \"interface\"=\$ifaceDataArray;
         \"system\"=\$systemArray;
-        \"gauge\"=({\"name\"=\"Total DHCP Leases\"; \"point\"=\$dhcpLeaseCount})
+        \"gauge\"=\$gauge
         };
-    :set cout [\$toJson \$cout]
+    # :set cout [\$toJon \$cout]
     :return \$cout;
 };
 # Function to remove special chars (\\n, \\r, \\t) from strings;
@@ -2753,6 +2754,7 @@
     }
     :return [:pick \$wanIp 0 [:find \$wanIp \"/\"]];
 }
+# Function to construct update request
 :global getUpdateBody do={
   :global getCollections;
   :global rosTsSec;
@@ -2767,8 +2769,23 @@
   :return [\$toJson ({
     \"collectors\"=[\$getCollections];
     \"wanIp\"=[\$getWanIp];
-    \"uptime\"=\$upTime;
+    \"uptime\"=([:tonum \$upTime]);
     \"sequenceNumber\"=\$runcount
   })];
+}
+# Function to send update request and get back update responce
+:global sendUpdate do={
+  :global ispappHTTPClient;
+  :global getUpdateBody;
+  :local responce ({});
+  :local requestBody \"{}\";
+  :do {
+    :set requestBody [\$getUpdateBody];
+    :set responce [\$ispappHTTPClient m=post a=update b=\$requestBody];
+    :put \$requestBody;
+    :return \$responce;
+  } on-error={
+
+  }
 }
 :put \"\\t V4 Library loaded! (;\";"
