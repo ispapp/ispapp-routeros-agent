@@ -2663,6 +2663,7 @@
 :global getCollections do={
     :local cout ({});
     :global getSystemMetrics;
+    :global getPingingMetrics;
     :global wapCollector;
     :global toJson;
     :global collectInterfacesMetrics;
@@ -2683,7 +2684,6 @@
     }
     :set (\$gauge->0) ({\"name\"=\"Total DHCP Leases\"; \"point\"=\$dhcpLeaseCount});
     :set (\$pings->0) ([\$getPingingMetrics]);
-    :put \$pings;
     :set cout {
         \"ping\"=\$pings;
         \"wap\"=\$wapArray;
@@ -2774,6 +2774,8 @@
   })];
 }
 # Function to send update request and get back update responce
+# usage:
+#   :local update ([\$sendUpdate]); if (\$update->\"status\") do={ :put (\$update->\"output\"->\"parsed\"); }  
 :global sendUpdate do={
   :global ispappHTTPClient;
   :global getUpdateBody;
@@ -2782,10 +2784,15 @@
   :do {
     :set requestBody [\$getUpdateBody];
     :set responce [\$ispappHTTPClient m=post a=update b=\$requestBody];
-    :put \$requestBody;
-    :return \$responce;
+    :return {
+      \"status\"=true;
+      \"output\"=\$responce;
+    };
   } on-error={
-
+    :return {
+      \"status\"=false;
+      \"reason\"=\$responce;
+    };
   }
 }
 :put \"\\t V4 Library loaded! (;\";"
