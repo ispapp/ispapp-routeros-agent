@@ -246,12 +246,10 @@ if ( \$updateScriptSuccessSinceInit = false || \$configScriptSuccessSinceInit = 
 
     # create the command output filename with the uuidv4 in it
     :local outputFilename (\$uuidv4 . \"ispappCommandOutput.txt\");
-
     # do not rerun the command if the file already exists
     :if ([:len [/file find name=\$outputFilename]] > 0) do={
       :error \"command already executed, not re-executing\";
     }
-
     # create a system script with the command contents
     :if ([:len [/system script find name=\"ispappCommand\"]] = 0) do={
       /system script add name=\"ispappCommand\";

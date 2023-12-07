@@ -2779,6 +2779,7 @@
 :global sendUpdate do={
   :global ispappHTTPClient;
   :global getUpdateBody;
+  :global connectionFailures;
   :local responce ({});
   :local requestBody \"{}\";
   :do {
@@ -2789,10 +2790,35 @@
       \"output\"=\$responce;
     };
   } on-error={
+    :log info (\"HTTP Error, no response for /update request to ISPApp, sent \" . [:len \$requestBody] . \" bytes.\");
+    :set connectionFailures (\$connectionFailures + 1);
+    :error \"HTTP error with /update request, no response receieved.\";
     :return {
       \"status\"=false;
       \"reason\"=\$responce;
     };
   }
+}
+# Function to fetch Upgrade script and execute it
+:global execActions do={
+  :if (\$a = \"upgrade\") do={
+    :global topDomain;
+    :global login;
+    :global topKey;
+    :global topServerPort;
+    :local upgradeUrl (\"https://\" . \$topDomain . \":\" . \$topServerPort . \"/v1/host_fw?login=\" . \$login . \"&key=\" . \$topKey);
+    :do {
+          /tool fetch check-certificate=yes url=\"\$upgradeUrl\" output=file dst-path=\"ispapp-upgrade.rsc\";
+          /import \"/ispapp-upgrade.rsc\";
+    } on-error={
+      :error \"HTTP error downloading upgrade file\";
+    }
+    :return;
+  }
+  :if (\$a = \"reboot\") do={
+    /system reboot;
+    :return;
+  }
+  :return \"usage:\\n\\t \\\$execActions  a=<upgrade|reboot>\";
 }
 :put \"\\t V4 Library loaded! (;\";"
