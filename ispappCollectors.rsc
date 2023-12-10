@@ -10,8 +10,4 @@ if (\$collectorsRunning = true) do={
 # cpu metric is the only thing that need continous refresh to fill cpu loads array
 # other than that the function get fresh data at execution.
 :set collectUpDataVal [\$getCollections];
-# temporary lines ->
-:set collectUpDataVal [\$toJson \$collectUpDataVal];
-:set collectUpDataVal [:pick  1 ([:len \$collectUpDataVal] - 1)];
-# temporary lines <-
 :set collectorsRunning false;"
