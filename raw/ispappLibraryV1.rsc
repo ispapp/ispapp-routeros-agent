@@ -604,15 +604,14 @@
     :global login;
     :global topListenerPort;
     :if (!any$certCheck) do={
-        
         :set certCheck "no";
     }
     # get current time and format it
     :local time [/system clock print as-value];
     :local formattedTime (($time->"date") . " | " . ($time->"time"));
-    :local actions ("update", "config");
+    :local actions ("update", "config", "/v1/host_fw", "bandwidth");
     if (!any $m) do={
-        :local method "get";
+        :set method "get";
     }
     # check if action was provided  
     if (!any $a) do={

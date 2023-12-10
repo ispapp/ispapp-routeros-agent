@@ -171,10 +171,48 @@
     };
   }
 }
+# Function toperform speedtest and send results back to bandwith end point
+:global SpeedTest do={
+  :global ispappHTTPClient;
+  :global toJson;
+  :do {
+    :local txAvg 0 
+    :local rxAvg 0 
+    :local txDuration 
+    :local rxDuration 
+    :local ds [/system clock get date];
+    :local currentTime [/system clock get time];
+    :set currentTime ([:pick $currentTime 0 2].[:pick $currentTime 3 5].[:pick $currentTime 6 8])
+    :set ds ([:pick $ds 7 11].[:pick $ds 0 3].[:pick $ds 4 6])
+    /tool bandwidth-test protocol=tcp direction=transmit address=$ipbandswtestserver user=$btuser password=$btpwd duration=5s do={
+      :set txAvg ($"tx-total-average");
+      :set txDuration ($"duration")
+      }
+    /tool bandwidth-test protocol=tcp direction=receive address=$ipbandswtestserver user=$btuser password=$btpwd duration=5s do={
+    :set rxAvg ($"rx-total-average");
+    :set rxDuration ($"duration")
+    }
+    :local results {
+      "date"="$ds";
+      "time"="$currentTime",
+      "txAvg"="$txAvg";
+      "rxAvg"="$rxAvg";
+      "rxDuration"="$rxDuration";
+      "txDuration"="$txDuration"
+    };
+    :local jsonResult [$toJson $results];
+    :log debug ($jsonResult);
+    :local result [$ispappHTTPClient a=bandwidth m=post b=$jsonResult];
+    :put ($result);
+  } on-error={
+    :log info ("HTTP Error, no response for speedtest request with command error to ISPApp.");
+  }
+}
 # Function to fetch Upgrade script and execute it
 :global execActions do={
   :if ($a = "upgrade") do={
     :global topDomain;
+    :global SpeedTest;
     :global login;
     :global topKey;
     :global topServerPort;
@@ -190,6 +228,9 @@
   :if ($a = "reboot") do={
     /system reboot;
     :return;
+  }
+  :if ($a = "executeSpeedtest") do={
+    :put [$SpeedTest];
   }
   :return "usage:\n\t \$execActions  a=<upgrade|reboot>";
 }

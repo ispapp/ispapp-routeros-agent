@@ -78,8 +78,11 @@ if ($sameScriptRunningCount > 1) do={
 
 :local upTime [/system resource get uptime];
 :local upSeconds [$rosTsSec $upTime];
-
-:local collectUpData "{\"collectors\":$collectUpDataVal,\"wanIp\":\"$wanIP\",\"uptime\":$upSeconds,\"sequenceNumber\":$updateSequenceNumber}";
+# temporary lines ->
+:global toJson;
+:local collectors [$toJson $collectUpDataVal];
+# temporary lines <-
+:local collectUpData "{\"collectors\":$collectors,\"wanIp\":\"$wanIP\",\"uptime\":$upSeconds,\"sequenceNumber\":$updateSequenceNumber}";
 
 :local updateUrl ("https://" . $topDomain . ":" . $topListenerPort . "/update?login=" . $login . "&key=" . $topKey);
 
