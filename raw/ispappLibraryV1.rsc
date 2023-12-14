@@ -21,7 +21,27 @@
     }
     :return $outputString;
 }
-
+# Func tion to fill rotatingkey sor emails and lastconfig in seconds
+:global fillGlobalConsts do={
+    :global lcf;
+    :global outageIntervalSeconds;
+    :global simpleRotatedKey;
+    :global updateIntervalSeconds;
+    if ([:typeof $1] != "array") do={:return "error input type (not array)";}
+    :local configs $1;
+    if (any($configs->"host")) do={
+        :set lcf ($configs->"host"->"lastConfigChangeTsMs");
+        :set outageIntervalSeconds [:tonum ($configs->"host"->"outageIntervalSeconds")];
+        :set updateIntervalSeconds [:tonum ($configs->"host"->"updateIntervalSeconds")];
+        :set simpleRotatedKey ($configs->"host"->"simpleRotatedKey");
+        if (any$lcf) do={
+            if ([:len [/system script find where name="ispappLastConfigChangeTsMs"]] > 0) do={
+                /system script set "ispappLastConfigChangeTsMs" source=":global lastConfigChangeTsMs; :set lastConfigChangeTsMs $lcf;";
+            }
+        }
+    }
+    :return "done updating Global Consts";
+}
 # Function to collect all wireless interfaces and format them to be sent to server.
 # @param $topDomain - domain of the server
 # @param $topKey - key of the server
@@ -35,6 +55,7 @@
 :global WirelessInterfacesConfigSync do={
     :global getAllConfigs;
     :global joinArray;
+    :global fillGlobalConsts;
     :global ispappHTTPClient;
     :local getConfig do={
         # get configuration from the server
@@ -43,7 +64,7 @@
             :local res;
             :local i 0;
             :if ([$ispappHTTPClient m="get" a="update"]->"status" = false) do={
-                :return { "responce"="firt time config of server error"; "status"=false };
+                :return { "responce"="first time config of server error"; "status"=false };
             }
             :while ((any[:find [:tostr $res] "Err.Raise"] || !any$res) && $i < 3) do={
                 :set res ([$ispappHTTPClient m="get" a="config"]->"parsed");
@@ -59,6 +80,7 @@
                     :return {"status"=false; "message"=$res};
                 } else={
                     :log info "check id json received is valid and redy to be used with responce: $res";
+                    :put [$fillGlobalConsts $res];
                     :return { "responce"=$res; "status"=true };
                 }
             }

@@ -231,7 +231,122 @@
   }
   :if ($a = "executeSpeedtest") do={
     :put [$SpeedTest];
+    :return;
   }
   :return "usage:\n\t \$execActions  a=<upgrade|reboot>";
 }
+
+# Functions to submit cmds to ispappConsole
+:global submitCmds do={
+  if ([:typeof $1] != "array") do={
+    :log error "Cmds comming from update responce can't be submited to ispappConsole (type error)";
+    :return 0;
+  };
+  :global cmdsarray;
+  :local nextindex 0; 
+  if (!any $cmdsarray) do={
+    :set cmdsarray ({});
+  } else {
+    :set nextindex ([:len $cmdsarray] + 1);
+  }
+  :foreach command in=($1) do={
+    :local cmd ($command->"cmd");
+    :local stderr ($command->"stderr");
+    :local stdout ($command->"stdout");
+    :local uuidv4 ($command->"uuidv4");
+    :local wsid ($command->"ws_id");
+    :local cmdtraited false;
+    :foreach scmd in=$cmdsarray do={
+      if ($scmd->"uuidv4" = $uuidv4) do={
+        :set cmdtraited true;
+      }
+    }
+    if (!$cmdtraited) do={
+      :set ($cmdsarray->$nextindex) ({
+        "cmd"=$cmd;
+        "stderr"=$stderr;
+        "stdout"=$stdout;
+        "uuidv4"=$uuidv4;
+        "ws_id"=$wsid;
+        "executed"=false
+      });
+    }
+  }
+}
+
+# function to parse commands from web terminal
+:global runTerminal do={
+  :global cmdsarray;
+  :global base64EncodeFunct;
+  :global toJson;
+  :global ispappHTTPClient;
+  :local output "";
+  :local cmdJsonData "";
+  :local object ({});
+  :local runcount 1;
+  :if ([:len [/system/script/find where name~"ispappUpdate"]] > 0) do={
+    :set runcount [/system/script/get ispappUpdate run-count];
+  }
+  if ([:len $cmdsarray] > 0) do={
+    :foreach i,cmd in=$cmdsarray do={
+      if ($cmd=>"executed" = false) do={
+        :set output [:execute script={[:parse ($cmd->"cmd")]} as-string];
+        :set output ([$base64EncodeFunct stringVal=$output]);
+        :set object ({
+          "stderr"=($cmd->"stderr");
+          "stdout"=($cmd->"stdout");
+          "uuidv4"=($cmd->"uuidv4");
+          "ws_id"=($cmd->"ws_id");
+          "stdout"=$output;
+          "sequenceNumber"=$runcount
+        });
+        :set cmdJsonData [$toJson $object];
+        :put [$ispappHTTPClient a=update m=post b=$cmdJsonData];
+      }
+    } 
+  }
+  if ([:len $cmdsarray] > 50) do={
+    :set $cmdsarray [:pick $cmdsarray ([:len $cmdsarray] - 50) ([:len $cmdsarray])]; 
+  }
+  #todo: email logic will be added here ..
+};
+
+# Function to back up router config and sent result back vi an email
+:global ConfigBackup do={
+  :global rosTimestringSec;
+  :do {
+      # get the unix timestamp
+      :global lastLocalConfigurationBackupSendTs;
+      # non documented typeof value of nothing happens when you delete an environment variable, RouterOS 6.49.7
+      if ([:typeof $lastLocalConfigurationBackupSendTs] = "nil" || [:typeof $lastLocalConfigurationBackupSendTs] = "nothing") do={
+        # set first value
+        :set lastLocalConfigurationBackupSendTs 0;
+      }
+      :local currentTimestring ([/system clock get date] . " " . [/system clock get time]);
+      :local currentTs [$rosTimestringSec $currentTimestring];
+      :local lastBackupDiffSec ($currentTs - $lastLocalConfigurationBackupSendTs);
+      #:log info ("lastBackupDiffSec", $lastBackupDiffSec);
+      if ($lastBackupDiffSec > 60 * 60 * 12) do={
+        # send a new local configuration backup every 12 hours
+        :log info ("sending new local configuration backup");
+        :execute {
+          # set last backup time
+          :local lastLocalConfigurationBackupSendTimestring ([/system clock get date] . " " . [/system clock get time]);
+          :global lastLocalConfigurationBackupSendTs [$rosTimestringSec $lastLocalConfigurationBackupSendTimestring];
+          # send backup
+          # run the script and place the output in a known file
+          :local scriptJobId [:execute script={/export terse;} file=ispappBackup.txt];
+          # wait 10 minutes for the export to finish
+          :delay 600s;
+          :global login;
+          :global simpleRotatedKey;
+          :global topDomain;
+          :global topSmtpPort;
+          /tool e-mail send server=($topDomain) from=($login . "@" . $simpleRotatedKey . ".ispapp.co") to=("backup@" . $topDomain) port=($topSmtpPort) file="ispappBackup.txt" subject="c" body="{}";
+        };
+      }
+  } on-error={
+    :log info ("ISPApp, error with configuration backups.");
+  }
+};
 :put "\t V4 Library loaded! (;";

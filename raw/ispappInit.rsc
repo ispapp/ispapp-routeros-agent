@@ -11,6 +11,11 @@
   :log info ("ispappConfig script error.");
 }
 :do {
+     /system script run ispappConsole;
+} on-error={
+  :log info ("ispappConfig script error.");
+}
+:do {
   # this runs without a scheduler, because LTE modems use serial communications and often pending activity blocks data collection
   /system script run ispappCollectors;
 } on-error={

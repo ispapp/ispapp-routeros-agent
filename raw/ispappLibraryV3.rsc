@@ -13,6 +13,7 @@
 :do {
     :global getAllConfigs;
     :global ispappHTTPClient;
+    :global fillGlobalConsts;
     :local getConfig do={
         # get configuration from the server
         :do {
@@ -36,6 +37,7 @@
                     :return {"status"=false; "message"=$res};
                 } else={
                     :log info "check id json received is valid and redy to be used with responce: $res";
+                    :put [$fillGlobalConsts $res];
                     :return { "responce"=$res; "status"=true };
                 }
             }
@@ -254,6 +256,7 @@
 # Function to collect all Caps manager interfaces and format them to be sent to server.
 :global CapsConfigSync do={
     :global getAllConfigs;
+    :global fillGlobalConsts;
     :global ispappHTTPClient;
     :local getConfig do={
         # get configuration from the server
@@ -278,6 +281,7 @@
                     :return {"status"=false; "message"=$res};
                 } else={
                     :log info "check id json received is valid and redy to be used with responce: $res";
+                    :put [$fillGlobalConsts $res];
                     :return { "responce"=$res; "status"=true };
                 }
             }

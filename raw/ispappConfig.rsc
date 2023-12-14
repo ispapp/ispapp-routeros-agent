@@ -120,3 +120,8 @@ if (any$topSmtpPort) do={
 } on-error={
   :log error "faild to sync device configurations with the host! \n~look in the logs to find more details~"
 }
+#----------------- run config backup if needed
+# :global $ConfigBackup;
+# if (any$ConfigBackup) do={
+#   :put [$ConfigBackup];
+# }

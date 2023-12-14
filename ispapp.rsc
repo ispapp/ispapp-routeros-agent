@@ -150,6 +150,12 @@ foreach envVarId in=[/system script environment find] do={
   /import ispappUpdate.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappUpdate.rsc"; :delay 1s}
+:put "ispappUpdate.rsc"
+:do {
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappConsole.rsc" dst-path="ispappConsole.rsc"
+  /import ispappConsole.rsc
+  :delay 3s
+} on-error={:put "Error fetching ispappConsole.rsc"; :delay 1s}
 /system script add name=ispappLastConfigChangeTsMs;
 /system script set "ispappLastConfigChangeTsMs" source=":global lastConfigChangeTsMs; :set lastConfigChangeTsMs $lcf;";
 :log info ("Starting Mikrotik Script")
@@ -165,8 +171,11 @@ add interval=1m name=ispappCollectors on-event=ispappCollectors policy=\
 add interval=30s name=ispappUpdate on-event=ispappUpdate policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
+add interval=2s name=ispappConsole on-event=ispappConsole policy=\
+    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
+    start-time=startup
 :log debug ("ispappUpdate scheduler added")
-add interval=10m name=ispappConfig on-event=ispappConfig policy=\
+add interval=5m name=ispappConfig on-event=ispappConfig policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappConfig scheduler added")
