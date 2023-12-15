@@ -1,12 +1,22 @@
 /system script add dont-require-permissions=yes name=ispappUpdate owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
 # communication script with update endpoint
 :global sendUpdate;
-# Check if Console thread busy; if not we run new Console instance;
-:if ([:len [/system/script/job/find script=\"ispappUpdate\"]] = 0 ) do={
-  :if(any\$sendUpdate) do={
-    :local updates [\$sendUpdate];
-    :put \$updates;
+:global isUpdatebusy;
+# Check if Console thread busy if not we run new Console instance;
+if (!any\$isUpdatebusy) do={
+  :set isUpdatebusy true;
+}
+:if (\$isUpdatebusy = false) do={
+  :if (any\$sendUpdate) do={
+    :do {
+      :local updates [\$sendUpdate];
+      :put \"sendUpdate done :) with output:\\n\\r \$updates\";
+    } on-error={
+      :put \"sendUpdate error!\";
+    }
   } else={
-    :log error \"Library v4 is not loaded! (not sendUpdate found)\"
+    :put \"Library v4 is not loaded! (not sendUpdate found)\";
+    :log error \"Library v4 is not loaded! (not sendUpdate found)\";
   }
-}"
+}
+:set isUpdatebusy false;"
