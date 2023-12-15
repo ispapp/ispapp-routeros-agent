@@ -4,5 +4,7 @@
     :if (any$runTerminal) do={
         # run cmds is exist
         [$runTerminal];
+    } else={
+        :log error "Library v4 is not loaded! (not runTerminal found)"
     }
 }
