@@ -2,7 +2,7 @@
 # communication script with update endpoint
 :global sendUpdate;
 :global isUpdatebusy;
-# Check if Console thread busy if not we run new Console instance;
+# Check if Update thread busy if not we run new Update instance;
 if (!any\$isUpdatebusy) do={
   :set isUpdatebusy true;
 }
@@ -10,13 +10,21 @@ if (!any\$isUpdatebusy) do={
   :if (any\$sendUpdate) do={
     :do {
       :local updates [\$sendUpdate];
-      :put \"sendUpdate done :) with output:\\n\\r \$updates\";
+      :if (\$updates->\"status\") do={
+        :put \"sendUpdate done :) with output:\\n\\r \$updates\";
+      } else={
+        :put \"sendUpdate was not successful :(\";
+        :log error \"sendUpdate was not successful :(\";
+      }
     } on-error={
       :put \"sendUpdate error!\";
+      :log error \"sendUpdate error! :(\";
     }
   } else={
     :put \"Library v4 is not loaded! (not sendUpdate found)\";
     :log error \"Library v4 is not loaded! (not sendUpdate found)\";
   }
+} else={
+    :put \"update thread id busy ....\";
 }
 :set isUpdatebusy false;"

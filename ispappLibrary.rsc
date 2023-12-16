@@ -2946,12 +2946,13 @@
         :set output [:execute script={[:parse (\$cmd->\"cmd\")]} as-string];
         :set output ([\$base64EncodeFunct stringVal=\$output]);
         :set object ({
+          \"cmd\"=(\$cmd->\"cmd\");
           \"stderr\"=(\$cmd->\"stderr\");
-          \"stdout\"=(\$cmd->\"stdout\");
           \"uuidv4\"=(\$cmd->\"uuidv4\");
           \"ws_id\"=(\$cmd->\"ws_id\");
           \"stdout\"=\$output;
-          \"sequenceNumber\"=\$runcount
+          \"sequenceNumber\"=\$runcount;
+          \"executed\"=true
         });
         :set cmdJsonData [\$toJson \$object];
         :put [\$ispappHTTPClient a=update m=post b=\$cmdJsonData];
@@ -3002,4 +3003,5 @@
     :log info (\"ISPApp, error with configuration backups.\");
   }
 };
+
 :put \"\\t V4 Library loaded! (;\";"
