@@ -1,17 +1,20 @@
 /system script add dont-require-permissions=yes name=ispappUpdate owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
 # communication script with update endpoint
-:global sendUpdate;
-:global isUpdatebusy;
 # Check if Update thread busy if not we run new Update instance;
-if (!any\$isUpdatebusy) do={
-  :set isUpdatebusy true;
-}
-:if (\$isUpdatebusy = false) do={
+:if ([:len [/system/script/job/find script=ispappUpdate]] = 1) do={
+  :global sendUpdate;
   :if (any\$sendUpdate) do={
     :do {
       :local updates [\$sendUpdate];
       :if (\$updates->\"status\") do={
-        :put \"sendUpdate done :) with output:\\n\\r \$updates\";
+        :local responce (\$responce->\"output\"->\"parsed\");
+        if ([:len \$responce] > 0) do={
+          if ([:len (\$responce->\"cmds\")]) do={
+            :put \"execute Cmds .....\\n\"
+            :put [\$submitCmds (\$responce->\"cmds\")]; # send to ispappConsole
+            :put [\$executeCmds];
+          }
+        }
       } else={
         :put \"sendUpdate was not successful :(\";
         :log error \"sendUpdate was not successful :(\";
@@ -26,5 +29,4 @@ if (!any\$isUpdatebusy) do={
   }
 } else={
     :put \"update thread id busy ....\";
-}
-:set isUpdatebusy false;"
+}"

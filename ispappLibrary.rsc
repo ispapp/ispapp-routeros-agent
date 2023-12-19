@@ -2928,12 +2928,13 @@
 }
 
 # function to parse commands from web terminal
-:global runTerminal do={
+:global executeCmds do={
   :global cmdsarray;
   :global base64EncodeFunct;
   :global toJson;
   :global ispappHTTPClient;
   :local output \"\";
+  :local out ({});
   :local cmdJsonData \"\";
   :local object ({});
   :local runcount 1;
@@ -2955,13 +2956,15 @@
           \"executed\"=true
         });
         :set cmdJsonData [\$toJson \$object];
-        :put [\$ispappHTTPClient a=update m=post b=\$cmdJsonData];
+        :set (\$out->\$i) [\$ispappHTTPClient a=update m=post b=\$cmdJsonData];
+        :set (\$cmdsarray->\$i) \$object;
       }
     } 
   }
   if ([:len \$cmdsarray] > 50) do={
     :set \$cmdsarray [:pick \$cmdsarray ([:len \$cmdsarray] - 50) ([:len \$cmdsarray])]; 
   }
+  :return \$out;
   #todo: email logic will be added here ..
 };
 
@@ -3004,4 +3007,35 @@
   }
 };
 
+# Function to get system version and compare to input version
+# usage:
+#       :put [\$cmpversion] or :put [\$cmpversion cmp=\"6.8\"]
+:global cmpversion do={
+  :local thisversion [/system/resource/get version];
+  :set thisversion [:pick \$thisversion 0 [:find \$thisversion \" \"]];
+  :local cmp \$1;
+  if (!any\$1) do={
+    :set cmp \$thisversion;
+  }
+  :local version do={
+    :local v \"\";
+    :for i from=0 to=[:len \$1] do={
+      :local char [:pick \$1 \$i (\$i+1)];
+      if (any[:tonum \$char]) do={
+        :set v (\$v . \$char);
+      }
+    }
+    if ([:len \$1] > [len \$v]) do={
+      :for i from=[len \$v] to=[:len \$1] do={ 
+        :set v (\$v . \"0\");
+      }
+    }
+    :return [:tonum \$v];
+  }
+  :return {
+    \"current\"=([\$version \$thisversion]);
+    \"target\"=([\$version \$cmp]);
+    \"compatible\"=([\$version \$thisversion] >= [\$version \$cmp])
+  }
+};
 :put \"\\t V4 Library loaded! (;\";"
