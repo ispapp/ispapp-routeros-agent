@@ -12,8 +12,8 @@
         if ([:len \$responce] > 0) do={
           if ([:len (\$responce->\"cmds\")]) do={
             :put \"Cmds processing .....\\n\"
-            [\$submitCmds (\$responce->\"cmds\")];
-            # [\$executeCmds];
+            :put [\$submitCmds (\$responce->\"cmds\")];
+            :put [\$executeCmds];
           }
         }
       } else={
