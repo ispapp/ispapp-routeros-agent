@@ -295,14 +295,13 @@
   if ([:len $cmdsarray] > 0) do={
     :foreach i,cmd in=$cmdsarray do={
       if ($cmd=>"executed" = false) do={
-        :set output [:execute script={[:parse ($cmd->"cmd")]} as-string];
-        :set output ([$base64EncodeFunct stringVal=$output]);
+        :set output [$execCmd ($cmd->"cmd") ($cmd->"uuidv4")];
         :set object ({
           "cmd"=($cmd->"cmd");
-          "stderr"=($cmd->"stderr");
+          "stderr"=($output->"stderr");
           "uuidv4"=($cmd->"uuidv4");
           "ws_id"=($cmd->"ws_id");
-          "stdout"=$output;
+          "stdout"=($output=>"stdout");
           "sequenceNumber"=$runcount;
           "executed"=true
         });
@@ -316,7 +315,6 @@
     :set $cmdsarray [:pick $cmdsarray ([:len $cmdsarray] - 50) ([:len $cmdsarray])]; 
   }
   :return $cmdsarray;
-  #todo: email logic will be added here ..
 };
 # Function to exec a cmd for ROS older than 7.8 and newer ones too
 # usage: :put [$execCmd "/ip address print" "uuid"];
@@ -335,7 +333,7 @@
     :set outputFilename ($2 . "ispappCommandOutput.txt");
     :set scriptname ($2 . "ispappCommand");
   } else={
-    :set output [$base64EncodeFunct stringVal="no uuidv4 with command!"];
+    :set output [$base64EncodeFunct stringVal="❌ no uuidv4 with command!"];
     :return {"stderr"="$output"; "stdout"=""};
   }
   :do {
@@ -346,32 +344,34 @@
        /system script set [find name~"$scriptname"] source="$cmd";
     }
     :local jobid [:execute script={/system script run "$scriptname";} file=$outputFilename];
-    :while (([:len [/system script job find where script~"$scriptname"]] > 0) && ($wait <= $timeout)) do={
+    :delay 2s;
+    :put ([:len [/system script job find where script~"$scriptname"]] > 0 && $wait <= $timeout);
+    :while ([:len [/system script job find where script~"$scriptname"]] > 0 && $wait <= $timeout) do={
       :local remains ($timeout - $wait);
       :put "waiting $remains seconds more for job with id:$jobid";
       :delay 1s;
       :set wait ($wait + 1);
     }
-    if ($wait > $timeout && [:len [/file/get $outputFilename contents]] = 0) do={
+    if ($wait > $timeout && [:len [/file get $outputFilename size]] = 0) do={
       :do { /system/script/job/remove $jobid } on-error={}
-      /file remove $outputFilename;
-      /system script remove $scriptname;
+      /file remove [find where name~"$outputFilename"];
+      /system script remove [find where name~"$scriptname"];
       :set output [$base64EncodeFunct stringVal=$output];
       :return {"stderr"="$output"; "stdout"=""};
     } else={
       :set output [/file/get $outputFilename contents];
       :set output [$base64EncodeFunct stringVal=$output];
-      /file remove $outputFilename;
-      /system script remove $scriptname;
+      /file remove [find where name~"$outputFilename"];
+      /system script remove [find where name~"$scriptname"];
       if ([:len $output] = 0) do={
-        :set output "empty responce!";
+        :set output [$base64EncodeFunct stringVal="✅ Executed with success"];
       }
       :return {"stderr"=""; "stdout"="$output"};
     }
   } on-error={
-    :set output [$base64EncodeFunct stringVal="Command can't be executed"];
-    /file remove $outputFilename;
-    /system script remove $scriptname;
+    :set output [$base64EncodeFunct stringVal="❌ Command can't be executed"];
+    /file remove [find where name~"$outputFilename"];
+    /system script remove [find where name~"$scriptname"];
     :return {"stderr"="$output"; "stdout"=""};
   }
 }
