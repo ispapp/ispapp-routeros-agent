@@ -29,7 +29,7 @@
     :global updateIntervalSeconds;
     if ([:typeof $1] != "array") do={:return "error input type (not array)";}
     :local configs $1;
-    if ([:len $configs->"host"] > 0) do={
+    if ([:len ($configs->"host")] > 0) do={
         :set lcf ($configs->"host"->"lastConfigChangeTsMs");
         :set outageIntervalSeconds [:tonum ($configs->"host"->"outageIntervalSeconds")];
         :set updateIntervalSeconds [:tonum ($configs->"host"->"updateIntervalSeconds")];
@@ -43,15 +43,6 @@
     :return "done updating Global Consts";
 }
 # Function to collect all wireless interfaces and format them to be sent to server.
-# @param $topDomain - domain of the server
-# @param $topKey - key of the server
-# @param $topListenerPort - port of the server
-# @param $login - login of the server
-# @param $password - password of the server
-# @param $prepareSSL - if true, SSL preparation will be done
-# @return $wlans - array of wireless interfaces
-# @return $status - status of the operation
-# @return $message - message of the operation
 :global WirelessInterfacesConfigSync do={
     :global getAllConfigs;
     :global joinArray;
@@ -302,13 +293,6 @@
 };
 
 # Function to prepare ssl connection to ispappHTTPClient
-# 1- check ntp client status if synced with google/apple ntp servers.
-#   10- setup ntp client if not synced and keep refreching 3 times max until it's working
-#   11- if ntp client is not working, then exit the function with false in ntpStatus key value.
-# 2- check if "Sectigo RSA DV CA" and "USERTrust RSA CA" exist and trusted.
-#   20- download and install the latest bundle if not exists.
-#   21- install the latest bundle if not valid.
-#   23- if bundle is not installed, then exit the function with false in caStatus key value.
 :global prepareSSL do={
     :global ntpStatus false;
     :global caStatus false;
