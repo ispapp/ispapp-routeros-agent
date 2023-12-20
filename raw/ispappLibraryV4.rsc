@@ -227,15 +227,15 @@
     } on-error={
       :error "HTTP error downloading upgrade file";
     }
-    :return;
+    :return "";
   }
   :if ($a = "reboot") do={
     /system reboot;
-    :return;
+    :return "";
   }
   :if ($a = "executeSpeedtest") do={
     :put [$SpeedTest];
-    :return;
+    :return "";
   }
   :return "usage:\n\t \$execActions  a=<upgrade|reboot>";
 }
@@ -243,6 +243,7 @@
 # Functions to submit cmds to ispappConsole
 :global submitCmds do={
   :global cmdsarray;
+  :local added 0;
   if ([:typeof $1] != "array") do={
     :log error "Cmds comming from update responce can't be submited";
     :return 0;
@@ -274,8 +275,10 @@
         "ws_id"=$wsid;
         "executed"=false
       });
+      :set added ($added + 1);
     }
   }
+  :return "$added Commands was sent for processing ~\n";
 }
 
 # function to parse commands from web terminal
@@ -288,6 +291,7 @@
   :local out ({});
   :local cmdJsonData "";
   :local object ({});
+  :local lenexecuted 0;
   :local runcount 1;
   :if ([:len [/system/script/find where name~"ispappUpdate"]] > 0) do={
     :set runcount [/system/script/get ispappUpdate run-count];
@@ -298,23 +302,28 @@
         :set output [$execCmd ($cmd->"cmd") ($cmd->"uuidv4")];
         :set object ({
           "cmd"=($cmd->"cmd");
-          "stderr"=($output->"stderr");
           "uuidv4"=($cmd->"uuidv4");
           "ws_id"=($cmd->"ws_id");
-          "stdout"=($output=>"stdout");
           "sequenceNumber"=$runcount;
           "executed"=true
-        });
+        }+$output);
         :set cmdJsonData [$toJson $object];
-        :set ($out->$i) [$ispappHTTPClient a=cmdresponse m=post b=$cmdJsonData];
+        :put $cmdJsonData;
+        :local nextidx [:len $out];
+        :set ($out->$nextidx) [$ispappHTTPClient a=cmdresponse m=post b=$cmdJsonData];
         :set ($cmdsarray->$i) $object;
+        :set lenexecuted ($lenexecuted + 1);
       }
     } 
   }
   if ([:len $cmdsarray] > 50) do={
     :set $cmdsarray [:pick $cmdsarray ([:len $cmdsarray] - 50) ([:len $cmdsarray])]; 
   }
-  :return $cmdsarray;
+  :return {
+    "responces"=$out;
+    "msg"="$lenexecuted commands was executed with success.";
+    "status"=true
+  };
 };
 # Function to exec a cmd for ROS older than 7.8 and newer ones too
 # usage: :put [$execCmd "/ip address print" "uuid"];
