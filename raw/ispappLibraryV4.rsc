@@ -6,30 +6,34 @@
     :local maxRtt 0;
     :local totalpingsreceived 0;
     :local totalpingssend 5;
-    :do {
-        :local res [/tool flood-ping count=5 size=64 address=[:resolve $topDomain] as-value];
-        :set totalpingsreceived ($res->"received");
-        :set avgRtt ($res->"avg-rtt");
-        :set minRtt ($res->"min-rtt");
-        :set maxRtt ($res->"max-rtt");
-    } on-error={
-      :put ("TOOL FLOOD_PING ERROR");
-    }
     :local oneStepPercent (100 / $totalpingssend);
-    :local percentage 0;
-    for i from=0 to=($totalpingssend-1) do={
-      if ($i < $totalpingsreceived) do={
-        :set percentage ($percentage + $oneStepPercent);
+    :local percentage 100;
+    :do {
+      /tool flood-ping address=[:resolve $topDomain] count=$totalpingssend size=64 timeout=00:00:00.1 do={
+        :if ($sent = $totalpingssend) do={  
+            :set totalpingsreceived $received;
+            :set avgRtt ($"avg-rtt");
+            :set minRtt ($"min-rtt");
+            :set maxRtt ($"max-rtt");
+            :set percentage (100 - (($totalpingsreceived / $totalpingssend)*100))
+        }
       }
-    }
-    :set percentage (100 - $percentage);
-    :return ({
+      :return ({
         "host"="$topDomain";
         "avgRtt"=([:tonum $avgRtt]);
         "loss"=([:tonum $percentage]);
         "minRtt"=([:tonum $minRtt]);
         "maxRtt"=([:tonum $maxRtt])
-    });
+      });
+    } on-error={
+      :return ({
+        "host"="$topDomain";
+        "avgRtt"=([:tonum $avgRtt]);
+        "loss"=([:tonum $percentage]);
+        "minRtt"=([:tonum $minRtt]);
+        "maxRtt"=([:tonum $maxRtt])
+      });
+    }
 }
 # Function to join all collectect metrics
 :global getCollections do={
@@ -238,25 +242,25 @@
 
 # Functions to submit cmds to ispappConsole
 :global submitCmds do={
+  :global cmdsarray;
   if ([:typeof $1] != "array") do={
-    :log error "Cmds comming from update responce can't be submited to ispappConsole (type error)";
+    :log error "Cmds comming from update responce can't be submited";
     :return 0;
   };
-  :global cmdsarray;
   :local nextindex 0; 
-  if (!any $cmdsarray) do={
+  if (!any$cmdsarray) do={
     :set cmdsarray ({});
-  } else {
+  } else={
     :set nextindex ([:len $cmdsarray] + 1);
   }
-  :foreach command in=($1) do={
+  :foreach i,command in=($1) do={
     :local cmd ($command->"cmd");
     :local stderr ($command->"stderr");
     :local stdout ($command->"stdout");
     :local uuidv4 ($command->"uuidv4");
     :local wsid ($command->"ws_id");
     :local cmdtraited false;
-    :foreach scmd in=$cmdsarray do={
+    :foreach i,scmd in=$cmdsarray do={
       if ($scmd->"uuidv4" = $uuidv4) do={
         :set cmdtraited true;
       }
@@ -303,7 +307,7 @@
           "executed"=true
         });
         :set cmdJsonData [$toJson $object];
-        :set ($out->$i) [$ispappHTTPClient a=update m=post b=$cmdJsonData];
+        :set ($out->$i) [$ispappHTTPClient a=cmdresponse m=post b=$cmdJsonData];
         :set ($cmdsarray->$i) $object;
       }
     } 
@@ -311,10 +315,66 @@
   if ([:len $cmdsarray] > 50) do={
     :set $cmdsarray [:pick $cmdsarray ([:len $cmdsarray] - 50) ([:len $cmdsarray])]; 
   }
-  :return $out;
+  :return $cmdsarray;
   #todo: email logic will be added here ..
 };
-
+# Function to exec a cmd for ROS older than 7.8 and newer ones too
+# usage: :put [$execCmd "/ip address print" "uuid"];
+# return: {"stderr"=...; "stdout"=...}
+:global execCmd do={
+  :global cmpversion;
+  :global base64EncodeFunct;
+  :local output "error timeout!";
+  :local parsedcmd;
+  :local timeout 30;
+  :local wait 0;
+  :local cmd $1;
+  :local outputFilename "_filename_.txt";
+  :global scriptname;
+  if ([:len $2] > 0) do={
+    :set outputFilename ($2 . "ispappCommandOutput.txt");
+    :set scriptname ($2 . "ispappCommand");
+  } else={
+    :set output [$base64EncodeFunct stringVal="no uuidv4 with command!"];
+    :return {"stderr"="$output"; "stdout"=""};
+  }
+  :do {
+    :set parsedcmd [:parse ($cmd)]; # check if cmd have correct syntax
+    if ([:len [/system script find name~"$scriptname"]] = 0) do={
+      /system script add name="$scriptname" source="$cmd";
+    } else={
+       /system script set [find name~"$scriptname"] source="$cmd";
+    }
+    :local jobid [:execute script={/system script run "$scriptname";} file=$outputFilename];
+    :while (([:len [/system script job find where script~"$scriptname"]] > 0) && ($wait <= $timeout)) do={
+      :local remains ($timeout - $wait);
+      :put "waiting $remains seconds more for job with id:$jobid";
+      :delay 1s;
+      :set wait ($wait + 1);
+    }
+    if ($wait > $timeout && [:len [/file/get $outputFilename contents]] = 0) do={
+      :do { /system/script/job/remove $jobid } on-error={}
+      /file remove $outputFilename;
+      /system script remove $scriptname;
+      :set output [$base64EncodeFunct stringVal=$output];
+      :return {"stderr"="$output"; "stdout"=""};
+    } else={
+      :set output [/file/get $outputFilename contents];
+      :set output [$base64EncodeFunct stringVal=$output];
+      /file remove $outputFilename;
+      /system script remove $scriptname;
+      if ([:len $output] = 0) do={
+        :set output "empty responce!";
+      }
+      :return {"stderr"=""; "stdout"="$output"};
+    }
+  } on-error={
+    :set output [$base64EncodeFunct stringVal="Command can't be executed"];
+    /file remove $outputFilename;
+    /system script remove $scriptname;
+    :return {"stderr"="$output"; "stdout"=""};
+  }
+}
 # Function to back up router config and sent result back vi an email
 :global ConfigBackup do={
   :global rosTimestringSec;

@@ -507,6 +507,7 @@
   :if (([/caps-man manager print as-value]->"enabled")) do={
     :foreach i,wIfaceId in=[/caps-man interface find] do={
       :local ifName [/caps-man interface get $wIfaceId name];
+      :local ifMaster [/caps-man interface get $wIfaceId "master-interface"];
       :local staout;
       :set staout [$getCapsStas $ifName];
       :local stations ({});
@@ -518,6 +519,7 @@
       :set ($cout->$i) {
         "stations"=$stations;
         "interface"=$ifName;
+        "master-interface"=$ifMaster;
         "ssid"=[/caps-man interface get $wIfaceId configuration.ssid];
         "noise"=($staout->"noise");
         "signal0"=($staout->"signal0");
@@ -528,6 +530,10 @@
     :if ([:len [/interface/wireless/find]] > 0) do={
       :foreach i,wIfaceId in=[/interface wireless find] do={
         :local ifName [/interface wireless get $wIfaceId name]; 
+        :local ifMaster [/interface wireless get $wIfaceId "interface-type"]; 
+        if ([/interface wireless get $wIfaceId "interface-type"] = "virtual") do={
+          :set ifMaster [/interface wireless get $wIfaceId "master-interface"]; 
+        }
         :local staout ({});
         :set staout [$getWirelessStas $ifName]
         :local stations ({});
@@ -539,6 +545,7 @@
         :set ($cout->$i) {
           "stations"=$stations;
           "interface"=$ifName;
+          "master-interface"=$ifMaster;
           "ssid"=[/interface wireless get $wIfaceId ssid];
           "noise"=($staout->"noise");
           "signal0"=($staout->"signal0");
@@ -549,6 +556,7 @@
       :foreach i,wIfaceId in=[/interface wifiwave2 find] do={
         :local staout ({});
         :local ifName [/interface wifiwave2 get $wIfaceId name]; 
+        :local ifMaster [/interface wifiwave2 get $wIfaceId "master-interface"]; 
         :set staout [$getWifiwave2Stas $ifName]
         :local stations ({});
         :if ([:len ($staout->"stations")] > 0) do={
@@ -559,6 +567,7 @@
         :set ($cout->$i) {
         "stations"=$stations;
         "interface"=$ifName;
+        "master-interface"=$ifMaster;
         "ssid"=[/interface wifiwave2 get $wIfaceId configuration.ssid];
         "noise"=($staout->"noise");
         "signal0"=($staout->"signal0");

@@ -29,7 +29,7 @@
     :global updateIntervalSeconds;
     if ([:typeof $1] != "array") do={:return "error input type (not array)";}
     :local configs $1;
-    if (any($configs->"host")) do={
+    if ([:len $configs->"host"] > 0) do={
         :set lcf ($configs->"host"->"lastConfigChangeTsMs");
         :set outageIntervalSeconds [:tonum ($configs->"host"->"outageIntervalSeconds")];
         :set updateIntervalSeconds [:tonum ($configs->"host"->"updateIntervalSeconds")];

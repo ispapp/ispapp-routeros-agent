@@ -123,27 +123,12 @@ foreach envVarId in=[/system script environment find] do={
   /import ispappConfig.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappConfig.rsc"; :delay 1s}
-
-:put "Download and import ispappDiagnoseConnection.rsc"
-:do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappDiagnoseConnection.rsc" dst-path="ispappDiagnoseConnection.rsc"
-  /import ispappDiagnoseConnection.rsc
-  :delay 3s
-} on-error={:put "Error fetching ispappDiagnoseConnection.rsc"; :delay 1s}
-
 :put "Download and import ispappInit.rsc"
 :do {
   /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappInit.rsc" dst-path="ispappInit.rsc"
   /import ispappInit.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappInit.rsc"; :delay 1s}
-
-:put "Download and import ispappCollectors.rsc"
-:do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappCollectors.rsc" dst-path="ispappCollectors.rsc"
-  /import ispappCollectors.rsc
-  :delay 3s
-} on-error={:put "Error fetching ispappCollectors.rsc"; :delay 1s}
 :put "ispappUpdate.rsc"
 :do {
   /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappUpdate.rsc" dst-path="ispappUpdate.rsc"
@@ -159,10 +144,6 @@ add name=ispappInit on-event=ispappInit policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
 :log debug ("ispappInit scheduler added")
-add interval=1m name=ispappCollectors on-event=ispappCollectors policy=\
-    ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
-    start-time=startup
-:log debug ("ispappCollectors scheduler added")
 add interval=5s name=ispappUpdate on-event=ispappUpdate policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
     start-time=startup
