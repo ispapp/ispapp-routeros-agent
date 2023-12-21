@@ -137,45 +137,6 @@
     }
 }
 
-# Function to check if credentials are ok
-# get last login state and save it for avoiding server loading 
-# syntax:
-#       :put [$loginIsOk] \\ result: true/false
-:global loginIsOk do={
-    # check if login and password are correct
-    # :global loginIsOkLastCheck $loginIsOkLastCheck;
-    # if (!any $loginIsOkLastCheck) do={
-    #     :global loginIsOkLastCheck ([$getTimestamp]->"current");
-    # } else={
-    #     :local difft ([$getTimestamp s $loginIsOkLastCheck]->"diff") ;
-    #     if ($difft < -30) do={
-    #         :return $loginIsOkLastCheckvalue;
-    #     } 
-    # }
-    # :if (any $TopVariablesDiagnose) do={
-    #     :local resTopCheck [$TopVariablesDiagnose];
-    #     :log info [:tostr $resTopCheck]
-    # }
-    :global loginIsOkLastCheckvalue;
-    :global topDomain;
-    :global topListenerPort;
-    :global login;
-    :global topKey;
-    if (!any $loginIsOkLastCheckvalue) do={
-        :set loginIsOkLastCheckvalue false;
-    }
-    :do {
-        # :set loginIsOkLastCheck ([$getTimestamp]->"current");
-        :local res [/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value];
-        :set loginIsOkLastCheckvalue ($res->"status" = "finished");
-        :log info "check if login and password are correct completed with response: $loginIsOkLastCheckvalue";
-        :return $loginIsOkLastCheckvalue;
-    } on-error={
-        :log info "check if login and password are correct completed with response: error";
-        :set loginIsOkLastCheckvalue false;
-        :return $loginIsOkLastCheckvalue;
-    }
-};
 # a function to persist variables in a script called ispapp_credentials
 :global savecredentials do={
   :global topKey;

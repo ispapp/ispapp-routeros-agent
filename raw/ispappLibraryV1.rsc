@@ -54,9 +54,9 @@
             :global ispappHTTPClient;
             :local res;
             :local i 0;
-            :if ([$ispappHTTPClient m="get" a="update"]->"status" = false) do={
-                :return { "response"="first time config of server error"; "status"=false };
-            }
+            # :if ([$ispappHTTPClient m="get" a="update"]->"status" = false) do={
+            #     :return { "response"="first time config of server error"; "status"=false };
+            # }
             :while ((any[:find [:tostr $res] "Err.Raise"] || !any$res) && $i < 3) do={
                 :set res ([$ispappHTTPClient m="get" a="config"]->"parsed");
                 :set i ($i + 1);
