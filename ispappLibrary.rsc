@@ -794,8 +794,7 @@
   :return (\$datePartDiffSec + \$timePartDiffSec + \$leapSecondsInDatePart);
 
 }
-:put \"\\t V0 Library loaded! (;\";
-"
+:put \"\\t V0 Library loaded! (;\";"
 
  add dont-require-permissions=yes name=ispappLibraryV1 owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
 ############################### this file contain predefined functions to be used across the agent script ################################
@@ -854,8 +853,8 @@
             :global ispappHTTPClient;
             :local res;
             :local i 0;
-            :if ([\$ispappHTresponse m=\"get\" a=\"update\"]->\"status\" = false) do={
-                :return { \"Response\"=\"first time config of server error\"; \"status\"=false };
+            :if ([\$ispappHTTPClient m=\"get\" a=\"update\"]->\"status\" = false) do={
+                :return { \"response\"=\"first time config of server error\"; \"status\"=false };
             }
             :while ((any[:find [:tostr \$res] \"Err.Raise\"] || !any\$res) && \$i < 3) do={
                 :set res ([\$ispappHTTPClient m=\"get\" a=\"config\"]->\"parsed\");
@@ -869,10 +868,10 @@
                 :if (\$res->\"host\"->\"Authed\" != true) do={
                     :log error [:tostr \$res];
                     :return {\"status\"=false; \"message\"=\$res};
-                } else={response
-                    :log info \"check id json received is valid and redy to be used with Response: \$res\";
-                    :put [\$fillresponsensts \$res];
-                    :return { \"Response\"=\$res; \"status\"=true };
+                } else={
+                    :log info \"check id json received is valid and redy to be used with response: \$res\";
+                    :put [\$fillGlobalConsts \$res];
+                    :return { \"response\"=\$res; \"status\"=true };
                 }
             }
         } on-error={
@@ -919,13 +918,13 @@
     :delay 1s;
     :log info \"done setting local functions .... 1s\"
     # check if our host is authorized to get configuration
-    # and ready tresponse interface syncronization
-    :local configResponse [\$getConfig];
+    # and ready to accept interface syncronization
+    :local configresponse [\$getConfig];
     :local localwirelessConfigs [\$getLocalWlans];
     :local output;
-    :local wireleresponses [:toarray \"\"];
-    :if (\$configResponse->\"status\" responsedo={response
-        :set wirelessConfigs (\$configResponse->\"Response\"->\"host\"->\"wirelessConfigs\");
+    :local wirelessConfigs [:toarray \"\"];
+    :if (\$configresponse->\"status\" = true) do={
+        :set wirelessConfigs (\$configresponse->\"response\"->\"host\"->\"wirelessConfigs\");
     }
     :delay 1s;
     :log info \"done setting wirelessConfigs .... 1s\"
@@ -1071,8 +1070,8 @@
         :local returned  [\$ispappHTTPClient m=post a=config b=\$sentbody];
         :return (\$output+{
             \"status\"=true;
-            \"response$sentbody;
-            \"Response\"=\$returned;
+            \"body\"=\$sentbody;
+            \"response\"=\$returned;
             \"message1\"=\$message
         });
     } else={
@@ -1460,8 +1459,7 @@
         :return { \"status\"=false; \"reason\"=(\$out->\"status\"); \"requestUrl\"=\"https://\$topDomain:\$topListenerPort/\$action?login=\$login&key=\$topKey\" };
     }
 }
-:put \"\\t V1 Library loaded! (;\";
-"
+:put \"\\t V1 Library loaded! (;\";"
 
  add dont-require-permissions=yes name=ispappLibraryV2 owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
 
@@ -1632,12 +1630,12 @@
     }
     :do {
         # :set loginIsOkLastCheck ([\$getTimestamp]->\"current\");
-        :local res [/tool fetch url=\"https://\$topDomain:\$topListenerPortresponselogin=\$login&key=\$topKey\" mode=https check-certificate=yes output=user as-value];
+        :local res [/tool fetch url=\"https://\$topDomain:\$topListenerPort/update?login=\$login&key=\$topKey\" mode=https check-certificate=yes output=user as-value];
         :set loginIsOkLastCheckvalue (\$res->\"status\" = \"finished\");
-        :log info \"check if login and password are correct completed with Response: \$loginIsOkLastCheckvalue\";
-        :return \$loginIsOkLastCheckvalue;response
+        :log info \"check if login and password are correct completed with response: \$loginIsOkLastCheckvalue\";
+        :return \$loginIsOkLastCheckvalue;
     } on-error={
-        :log info \"check if login and password are correct completed with Response: error\";
+        :log info \"check if login and password are correct completed with response: error\";
         :set loginIsOkLastCheckvalue false;
         :return \$loginIsOkLastCheckvalue;
     }
@@ -2097,8 +2095,7 @@
     };
   :return \$cout;
 }
-:put \"\\t V2 Library loaded! (;\";
-"
+:put \"\\t V2 Library loaded! (;\";"
 
  add dont-require-permissions=yes name=ispappLibraryV3 owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
 :global ispappLibraryV3 \"ispappLibraryV3 loaded\";
@@ -2121,10 +2118,10 @@
         # get configuration from the server
         :do {
             :global ispappHTTPClient;
-            :local res;response
+            :local res;
             :local i 0;
             :if ([\$ispappHTTPClient m=\"get\" a=\"update\"]->\"status\" = false) do={
-                :return { \"Response\"=\"firt time config of server error\"; \"status\"=false };
+                :return { \"response\"=\"firt time config of server error\"; \"status\"=false };
             }
             :while ((any[:find [:tostr \$res] \"Err.Raise\"] || !any\$res) && \$i < 3) do={
                 :set res ([\$ispappHTTPClient m=\"get\" a=\"config\"]->\"parsed\");
@@ -2136,12 +2133,12 @@
                 :return {\"status\"=false; \"message\"=\"error while getting config (Err.Raise fJSONLoads)\"};
             } else={
                 :if (\$res->\"host\"->\"Authed\" != true) do={
-                    :log error [:tostr \$res];response
+                    :log error [:tostr \$res];
                     :return {\"status\"=false; \"message\"=\$res};
-                } else={response
-                    :log info \"check id json received is valid and redy to be used with Response: \$res\";
+                } else={
+                    :log info \"check id json received is valid and redy to be used with response: \$res\";
                     :put [\$fillGlobalConsts \$res];
-                    :return { \"Response\"=\$res; \"status\"=true };
+                    :return { \"response\"=\$res; \"status\"=true };
                 }
             }
         } on-error={
@@ -2176,15 +2173,15 @@
         }
     };
     :delay 1s;
-    :log info \"dresponseing local functions .... 1s\"
+    :log info \"done setting local functions .... 1s\"
     # check if our host is authorized to get configuration
     # and ready to accept interface syncronization
-    :local configResponse [\$getConfig];
-    :local localwresponseonfigs [\$getLocalWlans];
-    :local output;responseresponse
+    :local configresponse [\$getConfig];
+    :local localwirelessConfigs [\$getLocalWlans];
+    :local output;
     :local wirelessConfigs [:toarray \"\"];
-    :if (\$configResponse->\"status\" = true) do={
-        :set wirelessConfigs (\$configResponse->\"Response\"->\"host\"->\"wirelessConfigs\");
+    :if (\$configresponse->\"status\" = true) do={
+        :set wirelessConfigs (\$configresponse->\"response\"->\"host\"->\"wirelessConfigs\");
     }
     :delay 1s;
     :log info \"done setting wirelessConfigs .... 1s\"
@@ -2336,10 +2333,10 @@
         :global ispappHTTPClient;
         :set sentbody ([\$getAllConfigs \$InterfaceslocalConfigs \$SecProfileslocalConfigs]->\"json\");
         :local returned  [\$ispappHTTPClient m=post a=config b=\$sentbody];
-        :returresponseput+{
+        :return (\$output+{
             \"status\"=true;
             \"body\"=\$sentbody;
-            \"Response\"=\$returned;
+            \"response\"=\$returned;
             \"message1\"=\$message
         });
     } else={
@@ -2365,10 +2362,10 @@
         # get configuration from the server
         :do {
             :global ispappHTTPClient;
-            :local res;response
+            :local res;
             :local i 0;
             :if ([\$ispappHTTPClient m=\"get\" a=\"update\"]->\"status\" = false) do={
-                :return { \"Response\"=\"firt time config of server error\"; \"status\"=false };
+                :return { \"response\"=\"firt time config of server error\"; \"status\"=false };
             }
             :while ((any[:find [:tostr \$res] \"Err.Raise\"] || !any\$res) && \$i < 3) do={
                 :set res ([\$ispappHTTPClient m=\"get\" a=\"config\"]->\"parsed\");
@@ -2380,12 +2377,12 @@
                 :return {\"status\"=false; \"message\"=\"error while getting config (Err.Raise fJSONLoads)\"};
             } else={
                 :if (\$res->\"host\"->\"Authed\" != true) do={
-                    :log error [:tostr \$res];response
+                    :log error [:tostr \$res];
                     :return {\"status\"=false; \"message\"=\$res};
-                } else={response
-                    :log info \"check id json received is valid and redy to be used with Response: \$res\";
+                } else={
+                    :log info \"check id json received is valid and redy to be used with response: \$res\";
                     :put [\$fillGlobalConsts \$res];
-                    :return { \"Response\"=\$res; \"status\"=true };
+                    :return { \"response\"=\$res; \"status\"=true };
                 }
             }
         } on-error={
@@ -2420,15 +2417,15 @@
         }
     };
     :delay 1s;
-    :log info \"dresponseing local functions .... 1s\"
+    :log info \"done setting local functions .... 1s\"
     # check if our host is authorized to get configuration
     # and ready to accept interface syncronization
-    :local configResponse [\$getConfig];
-    :local localwresponseonfigs [\$getLocalWlans];
-    :local output;responseresponse
+    :local configresponse [\$getConfig];
+    :local localwirelessConfigs [\$getLocalWlans];
+    :local output;
     :local wirelessConfigs [:toarray \"\"];
-    :if (\$configResponse->\"status\" = true) do={
-        :set wirelessConfigs (\$configResponse->\"Response\"->\"host\"->\"wirelessConfigs\");
+    :if (\$configresponse->\"status\" = true) do={
+        :set wirelessConfigs (\$configresponse->\"response\"->\"host\"->\"wirelessConfigs\");
     }
     :delay 1s;
     :log info \"done setting wirelessConfigs .... 1s\"
@@ -2586,10 +2583,10 @@
         :global ispappHTTPClient;
         :set sentbody ([\$getAllConfigs \$InterfaceslocalConfigs \$SecProfileslocalConfigs]->\"json\");
         :local returned  [\$ispappHTTPClient m=post a=config b=\$sentbody];
-        :returresponseput+{
+        :return (\$output+{
             \"status\"=true;
             \"body\"=\$sentbody;
-            \"Response\"=\$returned;
+            \"response\"=\$returned;
             \"message1\"=\$message
         });
     } else={
@@ -2644,8 +2641,7 @@
     }
     :return \$cout;
 }
-:put \"\\t V3 Library loaded! (;\";
-"
+:put \"\\t V3 Library loaded! (;\";"
 
  add dont-require-permissions=yes name=ispappLibraryV4 owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
 # Function to collect pinging stats from device to \$topdomain;
@@ -2795,33 +2791,33 @@
   :return [\$toJson ({
     \"collectors\"=[\$getCollections];
     \"wanIp\"=[\$getWanIp];
-    \"uptime\"=([:tonum \$upTime]);response
+    \"uptime\"=([:tonum \$upTime]);
     \"sequenceNumber\"=\$runcount
   })];
 }
-# Function to send update request and get back update Response
+# Function to send update request and get back update response
 # usage:
 #   :local update ([\$sendUpdate]); if (\$update->\"status\") do={ :put (\$update->\"output\"->\"parsed\"); }  
-:global sresponsee do={
+:global sendUpdate do={
   :global ispappHTTPClient;
   :global getUpdateBody;
   :global connectionFailures;
   :local response ({});
   :local requestBody \"{}\";
   :do {
-    :set requestBodresponseUpdateBody];
-    :set Response [\$ispappHTTPClient m=post a=update b=\$requestBody];
+    :set requestBody [\$getUpdateBody];
+    :set response [\$ispappHTTPClient m=post a=update b=\$requestBody];
     :return {
       \"status\"=true;
-      \"output\"=\$Response;
+      \"output\"=\$response;
     };
   } on-error={
     :log info (\"HTTP Error, no response for /update request to ISPApp, sent \" . [:len \$requestBody] . \" bytes.\");
-    :set connectionresponse (\$connectionFailures + 1);
+    :set connectionFailures (\$connectionFailures + 1);
     :error \"HTTP error with /update request, no response receieved.\";
     :return {
       \"status\"=false;
-      \"reason\"=\$Response;
+      \"reason\"=\$response;
     };
   }
 }
@@ -2891,11 +2887,11 @@
 }
 
 # Functions to submit cmds to ispappConsole
-:global submitCmds do={response
+:global submitCmds do={
   :global cmdsarray;
   :local added 0;
   if ([:typeof \$1] != \"array\") do={
-    :log error \"Cmds comming from update Response can't be submited\";
+    :log error \"Cmds comming from update response can't be submited\";
     :return 0;
   };
   :local nextindex 0; 
@@ -2934,6 +2930,7 @@
 # function to parse commands from web terminal
 :global executeCmds do={
   :global cmdsarray;
+  :global execCmd;
   :global base64EncodeFunct;
   :global toJson;
   :global ispappHTTPClient;
@@ -2958,7 +2955,6 @@
           \"executed\"=true
         }+\$output);
         :set cmdJsonData [\$toJson \$object];
-        :put \$cmdJsonData;
         :local nextidx [:len \$out];
         :set (\$out->\$nextidx) [\$ispappHTTPClient a=cmdresponse m=post b=\$cmdJsonData];
         :set (\$cmdsarray->\$i) \$object;
@@ -2966,11 +2962,11 @@
       }
     } 
   }
-  if (responsecmdsarray] > 50) do={
+  if ([:len \$cmdsarray] > 50) do={
     :set \$cmdsarray [:pick \$cmdsarray ([:len \$cmdsarray] - 50) ([:len \$cmdsarray])]; 
   }
   :return {
-    \"Responses\"=\$out;
+    \"responses\"=\$out;
     \"msg\"=\"\$lenexecuted commands was executed with success.\";
     \"status\"=true
   };
@@ -3104,5 +3100,4 @@
     \"compatible\"=([\$version \$thisversion] >= [\$version \$cmp])
   }
 };
-:put \"\\t V4 Library loaded! (;\";
-"
+:put \"\\t V4 Library loaded! (;\";"

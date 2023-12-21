@@ -6,6 +6,7 @@
   :global sendUpdate;
   :global submitCmds;
   :global execActions;
+  :global executeCmds;
   :if (any\$sendUpdate) do={
     :do {
       :local updates [\$sendUpdate];
@@ -13,7 +14,6 @@
         :local response (\$updates->\"output\"->\"parsed\");
         if ([:len \$response] > 0) do={
           if ([:len (\$response->\"cmds\")]) do={
-            :put \"Cmds processing .....\\n\";
             :put [\$submitCmds (\$response->\"cmds\")];
             :put [\$executeCmds];
           }
@@ -28,7 +28,7 @@
           } else={
             /system/scheduler/set ispappUpdate interval=30s disabled=no
           }
-           if ((\$response->\"reboot\") = \"1\") do={
+          if ((\$response->\"reboot\") = \"1\") do={
             :put [\$execActions a=\"reboot\"]
           }
         }
@@ -46,5 +46,4 @@
   }
 } else={
     :put \"update thread id busy ....\";
-}
-"
+}"
