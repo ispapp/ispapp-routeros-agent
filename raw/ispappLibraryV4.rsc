@@ -149,21 +149,21 @@
     "sequenceNumber"=$runcount
   })];
 }
-# Function to send update request and get back update responce
+# Function to send update request and get back update response
 # usage:
 #   :local update ([$sendUpdate]); if ($update->"status") do={ :put ($update->"output"->"parsed"); }  
 :global sendUpdate do={
   :global ispappHTTPClient;
   :global getUpdateBody;
   :global connectionFailures;
-  :local responce ({});
+  :local response ({});
   :local requestBody "{}";
   :do {
     :set requestBody [$getUpdateBody];
-    :set responce [$ispappHTTPClient m=post a=update b=$requestBody];
+    :set response [$ispappHTTPClient m=post a=update b=$requestBody];
     :return {
       "status"=true;
-      "output"=$responce;
+      "output"=$response;
     };
   } on-error={
     :log info ("HTTP Error, no response for /update request to ISPApp, sent " . [:len $requestBody] . " bytes.");
@@ -171,7 +171,7 @@
     :error "HTTP error with /update request, no response receieved.";
     :return {
       "status"=false;
-      "reason"=$responce;
+      "reason"=$response;
     };
   }
 }
@@ -245,7 +245,7 @@
   :global cmdsarray;
   :local added 0;
   if ([:typeof $1] != "array") do={
-    :log error "Cmds comming from update responce can't be submited";
+    :log error "Cmds comming from update response can't be submited";
     :return 0;
   };
   :local nextindex 0; 
@@ -284,6 +284,7 @@
 # function to parse commands from web terminal
 :global executeCmds do={
   :global cmdsarray;
+  :global execCmd;
   :global base64EncodeFunct;
   :global toJson;
   :global ispappHTTPClient;
@@ -308,7 +309,6 @@
           "executed"=true
         }+$output);
         :set cmdJsonData [$toJson $object];
-        :put $cmdJsonData;
         :local nextidx [:len $out];
         :set ($out->$nextidx) [$ispappHTTPClient a=cmdresponse m=post b=$cmdJsonData];
         :set ($cmdsarray->$i) $object;
@@ -320,7 +320,7 @@
     :set $cmdsarray [:pick $cmdsarray ([:len $cmdsarray] - 50) ([:len $cmdsarray])]; 
   }
   :return {
-    "responces"=$out;
+    "responses"=$out;
     "msg"="$lenexecuted commands was executed with success.";
     "status"=true
   };

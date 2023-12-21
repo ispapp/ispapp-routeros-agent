@@ -55,7 +55,7 @@
             :local res;
             :local i 0;
             :if ([$ispappHTTPClient m="get" a="update"]->"status" = false) do={
-                :return { "responce"="first time config of server error"; "status"=false };
+                :return { "response"="first time config of server error"; "status"=false };
             }
             :while ((any[:find [:tostr $res] "Err.Raise"] || !any$res) && $i < 3) do={
                 :set res ([$ispappHTTPClient m="get" a="config"]->"parsed");
@@ -70,9 +70,9 @@
                     :log error [:tostr $res];
                     :return {"status"=false; "message"=$res};
                 } else={
-                    :log info "check id json received is valid and redy to be used with responce: $res";
+                    :log info "check id json received is valid and redy to be used with response: $res";
                     :put [$fillGlobalConsts $res];
-                    :return { "responce"=$res; "status"=true };
+                    :return { "response"=$res; "status"=true };
                 }
             }
         } on-error={
@@ -120,12 +120,12 @@
     :log info "done setting local functions .... 1s"
     # check if our host is authorized to get configuration
     # and ready to accept interface syncronization
-    :local configResponce [$getConfig];
+    :local configresponse [$getConfig];
     :local localwirelessConfigs [$getLocalWlans];
     :local output;
     :local wirelessConfigs [:toarray ""];
-    :if ($configResponce->"status" = true) do={
-        :set wirelessConfigs ($configResponce->"responce"->"host"->"wirelessConfigs");
+    :if ($configresponse->"status" = true) do={
+        :set wirelessConfigs ($configresponse->"response"->"host"->"wirelessConfigs");
     }
     :delay 1s;
     :log info "done setting wirelessConfigs .... 1s"
@@ -272,7 +272,7 @@
         :return ($output+{
             "status"=true;
             "body"=$sentbody;
-            "responce"=$returned;
+            "response"=$returned;
             "message1"=$message
         });
     } else={

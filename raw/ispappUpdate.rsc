@@ -5,29 +5,29 @@
   :global sendUpdate;
   :global submitCmds;
   :global execActions;
+  :global executeCmds;
   :if (any$sendUpdate) do={
     :do {
       :local updates [$sendUpdate];
       :if ($updates->"status") do={
-        :local responce ($updates->"output"->"parsed");
-        if ([:len $responce] > 0) do={
-          if ([:len ($responce->"cmds")]) do={
-            :put "Cmds processing .....\n";
-            :put [$submitCmds ($responce->"cmds")];
+        :local response ($updates->"output"->"parsed");
+        if ([:len $response] > 0) do={
+          if ([:len ($response->"cmds")]) do={
+            :put [$submitCmds ($response->"cmds")];
             :put [$executeCmds];
           }
-          if (($responce->"executeSpeedtest") = "true") do={
+          if (($response->"executeSpeedtest") = "true") do={
             :put [$execActions a="executeSpeedtest"]
           }
-          if (($responce->"fwStatus") = "pending") do={
+          if (($response->"fwStatus") = "pending") do={
             :put [$execActions a="upgrade"]
           }
-          if (($responce->"updateFast") = "true") do={
+          if (($response->"updateFast") = "true") do={
             /system/scheduler/set ispappUpdate interval=3s disabled=no
           } else={
             /system/scheduler/set ispappUpdate interval=30s disabled=no
           }
-           if (($responce->"reboot") = "1") do={
+          if (($response->"reboot") = "1") do={
             :put [$execActions a="reboot"]
           }
         }

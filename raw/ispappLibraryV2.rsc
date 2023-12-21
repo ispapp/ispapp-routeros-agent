@@ -168,10 +168,10 @@
         # :set loginIsOkLastCheck ([$getTimestamp]->"current");
         :local res [/tool fetch url="https://$topDomain:$topListenerPort/update?login=$login&key=$topKey" mode=https check-certificate=yes output=user as-value];
         :set loginIsOkLastCheckvalue ($res->"status" = "finished");
-        :log info "check if login and password are correct completed with responce: $loginIsOkLastCheckvalue";
+        :log info "check if login and password are correct completed with response: $loginIsOkLastCheckvalue";
         :return $loginIsOkLastCheckvalue;
     } on-error={
-        :log info "check if login and password are correct completed with responce: error";
+        :log info "check if login and password are correct completed with response: error";
         :set loginIsOkLastCheckvalue false;
         :return $loginIsOkLastCheckvalue;
     }
