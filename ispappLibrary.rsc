@@ -847,6 +847,9 @@
     :global joinArray;
     :global fillGlobalConsts;
     :global ispappHTTPClient;
+    if ([:len [/system/script/job find script~\"ispappUpdate\"]] > 0) do={
+        :return {\"status\"=false; \"message\"=\"waiting update to finish first!\"};
+    }
     :local getConfig do={
         # get configuration from the server
         :do {
@@ -1032,29 +1035,22 @@
         :local InterfaceslocalConfigs;
         :local getkeytypes  [:parse \"/interface/wireless/security-profiles/get [/interface/wireless/get \\\$1 security-profile] authentication-types\"];
         :foreach k,interfaceid in=[/interface/wireless/find] do={
-            :set (\$InterfaceslocalConfigs->\$k) {
+            :local interfaceProps [/interface/wireless/get \$interfaceid];
+            :set (\$InterfaceslocalConfigs->\$k) (\$interfaceProps+{
                 \"if\"=([/interface/wireless/get \$interfaceid name]);
-                \"ssid\"=([/interface/wireless/get \$interfaceid ssid]);
                 \"key\"=([/interface/wireless/security-profile get [/interface/wireless/get \$interfaceid security-profile] wpa2-pre-shared-key]);
                 \"technology\"=\"wireless\";
-                \"interface-type\"=([/interface/wireless/get \$interfaceid interface-type]);
-                \"security_profile\"=([/interface/wireless/get \$interfaceid security-profile])
-            };
+            });
         };
         :local SecProfileslocalConfigs; 
         :foreach k,secid in=[/interface/wireless/security-profile find] do={
-            :local authtypes [/interface/wireless/security-profile get \$secid authentication-types];
+            :local secProf [/interface/wireless/security-profile get \$secid];
+            :local authtypes (\$secProf->\"authentication-types\");
             :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
-            :set (\$SecProfileslocalConfigs->\$k) {
-                \"name\"=([/interface/wireless/security-profile get \$secid name]);
+            :set (\$SecProfileslocalConfigs->\$k) (\$secProf+{
                 \"authentication-types\"=\$authtypes;
-                \"wpa2-pre-shared-key\"=([/interface/wireless/security-profile get \$secid wpa2-pre-shared-key]);
                 \"technology\"=\"wireless\";
-                \"wpa-pre-shared-key\"=([/interface/wireless/security-profile get \$secid wpa-pre-shared-key]);
-                \"eap-methods\"=([/interface/wireless/security-profile get \$secid eap-methods]);
-                \"mode\"=([/interface/wireless/security-profile get \$secid mode]);
-                \"default\"=([/interface/wireless/security-profile get \$secid default])
-            };
+            });
         };
         :local sentbody \"{}\";
         :local message (\"uploading \" . [:len \$InterfaceslocalConfigs] . \" interfaces to ispapp server\");
@@ -1450,7 +1446,11 @@
         }
         if (\$out->\"status\" = \"finished\") do={
             :global JSONLoads;
-            :local parses [\$JSONLoads (\$out->\"data\")];
+            :local receieved (\$out->\"data\");
+            if ([:len \$receieved] = 0) do={
+                :set receieved \"{}\";
+            }
+            :local parses [\$JSONLoads \$receieved];
             :return { \"status\"=true; \"response\"=(\$out->\"data\"); \"parsed\"=\$parses; \"requestUrl\"=\$requesturl };
         } else={
             :return { \"status\"=false; \"reason\"=(\$out); \"requestUrl\"=\$requesturl };
@@ -1667,19 +1667,20 @@
 :global collectInterfacesMetrics do={
   :local cout ({});
   :foreach i,iface in=[/interface find] do={
-    :set (\$cout->\$i) {
-    \"if\"=[/interface get \$iface name];
-    \"recBytes\"=[/interface get \$iface rx-byte];
-    \"recPackets\"=[/interface get \$iface rx-packet];
-    \"recErrors\"=[/interface get \$iface rx-error];
-    \"recDrops\"=[/interface get \$iface rx-drop];
-    \"sentBytes\"=[/interface get \$iface tx-byte];
-    \"sentPackets\"=[/interface get \$iface tx-packet];
-    \"sentErrors\"=[/interface get \$iface tx-error];
-    \"sentDrops\"=[/interface get \$iface tx-drop];
-    \"carrierChanges\"=[/interface get \$iface link-downs];
+    :local ifaceprops [/interface get \$iface];
+    :set (\$cout->\$i) (\$ifaceprops + {
+    \"if\"=(\$ifaceprops->\"name\");
+    \"recBytes\"=(\$ifaceprops->\"rx-byte\");
+    \"recPackets\"=(\$ifaceprops->\"rx-packet\");
+    \"recErrors\"=(\$ifaceprops->\"rx-error\");
+    \"recDrops\"=(\$ifaceprops->\"rx-drop\");
+    \"sentBytes\"=(\$ifaceprops->\"tx-byte\");
+    \"sentPackets\"=(\$ifaceprops->\"tx-packet\");
+    \"sentErrors\"=(\$ifaceprops->\"tx-error\");
+    \"sentDrops\"=(\$ifaceprops->\"tx-drop\");
+    \"carrierChanges\"=(\$ifaceprops->\"link-downs\");
     \"macs\"=[:len [/ip arp find where interface=\$ifaceName]]
-    }
+    })
   }
   :return \$cout;
 }
@@ -1696,13 +1697,14 @@
   :local wIfSig0 0;
   :global rosTsSec;
   :foreach i,wStaId in=[/interface wireless registration-table find where interface=\$1] do={
-        :local wStaMac ([/interface wireless registration-table get \$wStaId mac-address]);
-        :local wStaRssi ([/interface wireless registration-table get \$wStaId signal-strength]);
+        :local ifregprops [/interface wireless registration-table get \$wStaId];
+        :local wStaMac (\$ifregprops->\"mac-address\");
+        :local wStaRssi (\$ifregprops->\"signal-strength\");
         :set wStaRssi ([:pick \$wStaRssi 0 [:find \$wStaRssi \"dBm\"]]);
         :set wStaRssi ([:tonum \$wStaRssi]);
-        :set wStaNoise (\$wStaRssi - [:tonum [/interface wireless registration-table get \$wStaId signal-to-noise]]);
-        :set wStaSig0 ([:tonum [/interface wireless registration-table get \$wStaId signal-strength-ch0]]);
-        :set wStaSig1 ([:tonum [/interface wireless registration-table get \$wStaId signal-strength-ch1]]);
+        :set wStaNoise (\$wStaRssi - [:tonum (\$ifregprops->\"signal-to-noise\")]);
+        :set wStaSig0 ([:tonum (\$ifregprops->\"signal-strength-ch0\")]);
+        :set wStaSig1 ([:tonum (\$ifregprops->\"signal-strength-ch1\")]);
         if ([:len \$wStaSig1] = 0) do={
           :set wStaSig1 0;
         }
@@ -1768,21 +1770,22 @@
   :local wIfSig0 0;
   :global rosTsSec;
   :foreach i,wStaId in=[/caps-man registration-table find where  interface=\$1] do={
-      :local wStaMac ([/caps-man registration-table get \$wStaId mac-address]);
-      :local wStaRssi ([/caps-man registration-table get \$wStaId signal-strength]);
+      :local ifregprops [/caps-man registration-table get \$wStaId];
+      :local wStaMac (\$ifregprops->\"mac-address\");
+      :local wStaRssi (\$ifregprops->\"signal-strength\");
       :set wStaRssi ([:pick \$wStaRssi 0 [:find \$wStaRssi \"dBm\"]]);
       :set wStaRssi ([:tonum \$wStaRssi]);
-      :local wStaNoise ([/caps-man registration-table get \$wStaId signal-to-noise]);
+      :local wStaNoise (\$ifregprops->\"signal-to-noise\");
       :set wStaNoise (\$wStaRssi - [:tonum \$wStaNoise]);
-      :local wStaSig0 ([/caps-man registration-table get \$wStaId signal-strength-ch0]);
+      :local wStaSig0 (\$ifregprops->\"signal-strength-ch0\");
       :set wStaSig0 ([:tonum \$wStaSig0]);
-      :local wStaSig1 ([/caps-man registration-table get \$wStaId signal-strength-ch1]);
+      :local wStaSig1 (\$ifregprops->\"signal-strength-ch1\");
       :set wStaSig1 ([:tonum \$wStaSig1]);
       if ([:len \$wStaSig1] = 0) do={
         :set wStaSig1 0;
       }
-      :local wStaExpectedRate ([/caps-man registration-table get \$wStaId p-throughput]);
-      :local wStaAssocTime ([/caps-man registration-table get \$wStaId uptime]);
+      :local wStaExpectedRate (\$ifregprops->\"p-throughput\");
+      :local wStaAssocTime (\$ifregprops->\"uptime\");
       # convert the associated time to seconds
       :local assocTimeSplit [\$rosTsSec \$wStaAssocTime];
       :set wStaAssocTime \$assocTimeSplit;
@@ -1790,7 +1793,7 @@
       :set wIfNoise (\$wIfNoise + \$wStaNoise);
       :set wIfSig0 (\$wIfSig0 + \$wStaSig0);
       :set wIfSig1 (\$wIfSig1 + \$wStaSig1);
-      :local wStaIfBytes ([/caps-man registration-table get \$wStaId bytes]);
+      :local wStaIfBytes (\$ifregprops->\"bytes\");
       :local wStaIfSentBytes ([:pick \$wStaIfBytes 0 [:find \$wStaIfBytes \",\"]]);
       :local wStaIfRecBytes ([:pick \$wStaIfBytes 0 [:find \$wStaIfBytes \",\"]]);
       :local wStaDhcpName ([/ip dhcp-server lease find where mac-address=\$wStaMac]);
@@ -1843,13 +1846,14 @@
   :local wIfSig0 0;
   :global rosTsSec;
   :foreach i,wStaId in=[/interface wifiwave2 registration-table find where interface=\$1] do={
-    :local wStaMac ([/interface wifiwave2 registration-table get \$wStaId mac-address]);
-    :local wStaRssi ([/interface wifiwave2 registration-table get \$wStaId signal]);
+    :local ifregprops [/interface wifiwave2 registration-table get \$wStaId];
+    :local wStaMac (\$ifregprops->\"mac-address\");
+    :local wStaRssi (\$ifregprops->\"signal\");
     :set wStaRssi ([:tonum \$wStaRssi]);
-    :local wStaAssocTime ([/interface wifiwave2 registration-table get \$wStaId uptime]);
+    :local wStaAssocTime (\$ifregprops->\"uptime\");
     :local assocTimeSplit [\$rosTsSec \$wStaAssocTime];
     :set wStaAssocTime \$assocTimeSplit;
-    :local wStaIfBytes ([/interface wifiwave2 registration-table get \$wStaId bytes]);
+    :local wStaIfBytes (\$ifregprops->\"bytes\");
     :local wStaIfSentBytes ([:pick \$wStaIfBytes 0 [:find \$wStaIfBytes \",\"]]);
     :local wStaIfRecBytes ([:pick \$wStaIfBytes 0 [:find \$wStaIfBytes \",\"]]);
     :local wStaDhcpName ([/ip dhcp-server lease find where mac-address=\$wStaMac]);
@@ -2075,6 +2079,9 @@
     :global getAllConfigs;
     :global ispappHTTPClient;
     :global fillGlobalConsts;
+    if ([:len [/system/script/job find script~\"ispappUpdate\"]] > 0) do={
+        :return {\"status\"=false; \"message\"=\"waiting update to finish first!\"};
+    }
     :local getConfig do={
         # get configuration from the server
         :do {
@@ -2319,6 +2326,9 @@
     :global getAllConfigs;
     :global fillGlobalConsts;
     :global ispappHTTPClient;
+    if ([:len [/system/script/job find script~\"ispappUpdate\"]] > 0) do={
+        :return {\"status\"=false; \"message\"=\"waiting update to finish first!\"};
+    }
     :local getConfig do={
         # get configuration from the server
         :do {
@@ -2859,31 +2869,35 @@
   if (!any\$cmdsarray) do={
     :set cmdsarray ({});
   } else={
-    :set nextindex ([:len \$cmdsarray] + 1);
+    :set nextindex ([:len \$cmdsarray]);
   }
-  :foreach i,command in=(\$1) do={
-    :local cmd (\$command->\"cmd\");
-    :local stderr (\$command->\"stderr\");
-    :local stdout (\$command->\"stdout\");
-    :local uuidv4 (\$command->\"uuidv4\");
-    :local wsid (\$command->\"ws_id\");
-    :local cmdtraited false;
-    :foreach i,scmd in=\$cmdsarray do={
-      if (\$scmd->\"uuidv4\" = \$uuidv4) do={
-        :set cmdtraited true;
+  :foreach i,command in=\$1 do={
+    if (!any[:find [:tostr \$command] \"Err.Rais\"]) do={
+      :local cmd (\$command->\"cmd\");
+      :local stderr (\$command->\"stderr\");
+      :local stdout (\$command->\"stdout\");
+      :local uuidv4 (\$command->\"uuidv4\");
+      :local wsid (\$command->\"ws_id\");
+      :local cmdtraited false;
+      :foreach i,scmd in=\$cmdsarray do={
+        if (\$scmd->\"uuidv4\" = \$uuidv4) do={
+          :set cmdtraited true;
+        }
+      }
+      :delay 1s;
+      if (!\$cmdtraited) do={
+        :set (\$cmdsarray->\$nextindex) ({
+          \"cmd\"=\$cmd;
+          \"stderr\"=\$stderr;
+          \"stdout\"=\$stdout;
+          \"uuidv4\"=\$uuidv4;
+          \"ws_id\"=\$wsid;
+          \"executed\"=false
+        });
+        :set added (\$added + 1);
       }
     }
-    if (!\$cmdtraited) do={
-      :set (\$cmdsarray->\$nextindex) ({
-        \"cmd\"=\$cmd;
-        \"stderr\"=\$stderr;
-        \"stdout\"=\$stdout;
-        \"uuidv4\"=\$uuidv4;
-        \"ws_id\"=\$wsid;
-        \"executed\"=false
-      });
-      :set added (\$added + 1);
-    }
+    :set nextindex ([:len \$cmdsarray]);
   }
   :return \"\$added Commands was sent for processing ~\\n\";
 }
@@ -2917,19 +2931,18 @@
         }+\$output);
         :set cmdJsonData [\$toJson \$object];
         :local nextidx [:len \$out];
-        :set (\$out->\$nextidx) [\$ispappHTTPClient a=cmdresponse m=post b=\$cmdJsonData];
+        :set (\$out->\$nextidx) ([\$ispappHTTPClient a=cmdresponse m=post b=\$cmdJsonData]->\"status\");
         :set (\$cmdsarray->\$i) \$object;
         :set lenexecuted (\$lenexecuted + 1);
       }
     } 
   }
-  if ([:len \$cmdsarray] > 50) do={
-    :set \$cmdsarray [:pick \$cmdsarray ([:len \$cmdsarray] - 50) ([:len \$cmdsarray])]; 
+  if ([:len \$cmdsarray] > 5) do={
+    :set \$cmdsarray [:pick \$cmdsarray ([:len \$cmdsarray] - 5) ([:len \$cmdsarray])]; 
   }
   :return {
     \"responses\"=\$out;
-    \"msg\"=\"\$lenexecuted commands was executed with success.\";
-    \"status\"=true
+    \"msg\"=\"\$lenexecuted commands was executed with success.\"
   };
 };
 # Function to exec a cmd for ROS older than 7.8 and newer ones too
@@ -2961,7 +2974,7 @@
     }
     :local jobid [:execute script={/system script run \"\$scriptname\";} file=\$outputFilename];
     :delay 2s;
-    :put ([:len [/system script job find where script~\"\$scriptname\"]] > 0 && \$wait <= \$timeout);
+    # :put ([:len [/system script job find where script~\"\$scriptname\"]] > 0 && \$wait <= \$timeout);
     :while ([:len [/system script job find where script~\"\$scriptname\"]] > 0 && \$wait <= \$timeout) do={
       :local remains (\$timeout - \$wait);
       :put \"waiting \$remains seconds more for job with id:\$jobid\";
