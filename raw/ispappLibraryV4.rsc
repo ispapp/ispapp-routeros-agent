@@ -252,31 +252,35 @@
   if (!any$cmdsarray) do={
     :set cmdsarray ({});
   } else={
-    :set nextindex ([:len $cmdsarray] + 1);
+    :set nextindex ([:len $cmdsarray]);
   }
-  :foreach i,command in=($1) do={
-    :local cmd ($command->"cmd");
-    :local stderr ($command->"stderr");
-    :local stdout ($command->"stdout");
-    :local uuidv4 ($command->"uuidv4");
-    :local wsid ($command->"ws_id");
-    :local cmdtraited false;
-    :foreach i,scmd in=$cmdsarray do={
-      if ($scmd->"uuidv4" = $uuidv4) do={
-        :set cmdtraited true;
+  :foreach i,command in=$1 do={
+    if (!any[:find [:tostr $command] "Err.Rais"]) do={
+      :local cmd ($command->"cmd");
+      :local stderr ($command->"stderr");
+      :local stdout ($command->"stdout");
+      :local uuidv4 ($command->"uuidv4");
+      :local wsid ($command->"ws_id");
+      :local cmdtraited false;
+      :foreach i,scmd in=$cmdsarray do={
+        if ($scmd->"uuidv4" = $uuidv4) do={
+          :set cmdtraited true;
+        }
+      }
+      :delay 1s;
+      if (!$cmdtraited) do={
+        :set ($cmdsarray->$nextindex) ({
+          "cmd"=$cmd;
+          "stderr"=$stderr;
+          "stdout"=$stdout;
+          "uuidv4"=$uuidv4;
+          "ws_id"=$wsid;
+          "executed"=false
+        });
+        :set added ($added + 1);
       }
     }
-    if (!$cmdtraited) do={
-      :set ($cmdsarray->$nextindex) ({
-        "cmd"=$cmd;
-        "stderr"=$stderr;
-        "stdout"=$stdout;
-        "uuidv4"=$uuidv4;
-        "ws_id"=$wsid;
-        "executed"=false
-      });
-      :set added ($added + 1);
-    }
+    :set nextindex ([:len $cmdsarray]);
   }
   :return "$added Commands was sent for processing ~\n";
 }
@@ -310,19 +314,18 @@
         }+$output);
         :set cmdJsonData [$toJson $object];
         :local nextidx [:len $out];
-        :set ($out->$nextidx) [$ispappHTTPClient a=cmdresponse m=post b=$cmdJsonData];
+        :set ($out->$nextidx) ([$ispappHTTPClient a=cmdresponse m=post b=$cmdJsonData]->"status");
         :set ($cmdsarray->$i) $object;
         :set lenexecuted ($lenexecuted + 1);
       }
     } 
   }
-  if ([:len $cmdsarray] > 50) do={
-    :set $cmdsarray [:pick $cmdsarray ([:len $cmdsarray] - 50) ([:len $cmdsarray])]; 
+  if ([:len $cmdsarray] > 5) do={
+    :set $cmdsarray [:pick $cmdsarray ([:len $cmdsarray] - 5) ([:len $cmdsarray])]; 
   }
   :return {
     "responses"=$out;
-    "msg"="$lenexecuted commands was executed with success.";
-    "status"=true
+    "msg"="$lenexecuted commands was executed with success."
   };
 };
 # Function to exec a cmd for ROS older than 7.8 and newer ones too
@@ -354,7 +357,7 @@
     }
     :local jobid [:execute script={/system script run "$scriptname";} file=$outputFilename];
     :delay 2s;
-    :put ([:len [/system script job find where script~"$scriptname"]] > 0 && $wait <= $timeout);
+    # :put ([:len [/system script job find where script~"$scriptname"]] > 0 && $wait <= $timeout);
     :while ([:len [/system script job find where script~"$scriptname"]] > 0 && $wait <= $timeout) do={
       :local remains ($timeout - $wait);
       :put "waiting $remains seconds more for job with id:$jobid";

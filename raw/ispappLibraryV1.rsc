@@ -48,6 +48,9 @@
     :global joinArray;
     :global fillGlobalConsts;
     :global ispappHTTPClient;
+    if ([:len [/system/script/job find script~"ispappUpdate"]] > 0) do={
+        :return {"status"=false; "message"="waiting update to finish first!"};
+    }
     :local getConfig do={
         # get configuration from the server
         :do {
@@ -233,29 +236,22 @@
         :local InterfaceslocalConfigs;
         :local getkeytypes  [:parse "/interface/wireless/security-profiles/get [/interface/wireless/get \$1 security-profile] authentication-types"];
         :foreach k,interfaceid in=[/interface/wireless/find] do={
-            :set ($InterfaceslocalConfigs->$k) {
+            :local interfaceProps [/interface/wireless/get $interfaceid];
+            :set ($InterfaceslocalConfigs->$k) ($interfaceProps+{
                 "if"=([/interface/wireless/get $interfaceid name]);
-                "ssid"=([/interface/wireless/get $interfaceid ssid]);
                 "key"=([/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa2-pre-shared-key]);
                 "technology"="wireless";
-                "interface-type"=([/interface/wireless/get $interfaceid interface-type]);
-                "security_profile"=([/interface/wireless/get $interfaceid security-profile])
-            };
+            });
         };
         :local SecProfileslocalConfigs; 
         :foreach k,secid in=[/interface/wireless/security-profile find] do={
-            :local authtypes [/interface/wireless/security-profile get $secid authentication-types];
+            :local secProf [/interface/wireless/security-profile get $secid];
+            :local authtypes ($secProf->"authentication-types");
             :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
-            :set ($SecProfileslocalConfigs->$k) {
-                "name"=([/interface/wireless/security-profile get $secid name]);
+            :set ($SecProfileslocalConfigs->$k) ($secProf+{
                 "authentication-types"=$authtypes;
-                "wpa2-pre-shared-key"=([/interface/wireless/security-profile get $secid wpa2-pre-shared-key]);
                 "technology"="wireless";
-                "wpa-pre-shared-key"=([/interface/wireless/security-profile get $secid wpa-pre-shared-key]);
-                "eap-methods"=([/interface/wireless/security-profile get $secid eap-methods]);
-                "mode"=([/interface/wireless/security-profile get $secid mode]);
-                "default"=([/interface/wireless/security-profile get $secid default])
-            };
+            });
         };
         :local sentbody "{}";
         :local message ("uploading " . [:len $InterfaceslocalConfigs] . " interfaces to ispapp server");
@@ -651,7 +647,11 @@
         }
         if ($out->"status" = "finished") do={
             :global JSONLoads;
-            :local parses [$JSONLoads ($out->"data")];
+            :local receieved ($out->"data");
+            if ([:len $receieved] = 0) do={
+                :set receieved "{}";
+            }
+            :local parses [$JSONLoads $receieved];
             :return { "status"=true; "response"=($out->"data"); "parsed"=$parses; "requestUrl"=$requesturl };
         } else={
             :return { "status"=false; "reason"=($out); "requestUrl"=$requesturl };

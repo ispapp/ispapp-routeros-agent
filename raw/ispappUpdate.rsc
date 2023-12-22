@@ -14,6 +14,7 @@
         if ([:len $response] > 0) do={
           if ([:len ($response->"cmds")]) do={
             :put [$submitCmds ($response->"cmds")];
+            :delay ([:len ($response->"cmds")] . "s");
             :put [$executeCmds];
           }
           if (($response->"executeSpeedtest") = "true") do={

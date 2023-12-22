@@ -14,6 +14,9 @@
     :global getAllConfigs;
     :global ispappHTTPClient;
     :global fillGlobalConsts;
+    if ([:len [/system/script/job find script~"ispappUpdate"]] > 0) do={
+        :return {"status"=false; "message"="waiting update to finish first!"};
+    }
     :local getConfig do={
         # get configuration from the server
         :do {
@@ -258,6 +261,9 @@
     :global getAllConfigs;
     :global fillGlobalConsts;
     :global ispappHTTPClient;
+    if ([:len [/system/script/job find script~"ispappUpdate"]] > 0) do={
+        :return {"status"=false; "message"="waiting update to finish first!"};
+    }
     :local getConfig do={
         # get configuration from the server
         :do {
