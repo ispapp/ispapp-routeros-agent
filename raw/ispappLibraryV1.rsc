@@ -61,11 +61,12 @@
             # :if ([$ispappHTTPClient m="get" a="update"]->"status" = false) do={
             #     :return { "response"="first time config of server error"; "status"=false };
             # }
-            :while ((any[:find [:tostr $res] "Err.Raise"] || !any$res) && $i < 3) do={
+            :while (([:len [:find [:tostr $res] "Err.Raise"]] != 0 || [:len $res] = 0) && $i < 3) do={
                 :set res ([$ispappHTTPClient m="get" a="config"]->"parsed");
+                :delay 1s;
                 :set i ($i + 1);
             }
-            if (any [:find [:tostr $res] "Err.Raise"]) do={
+            if ([:len [:find [:tostr $res] "Err.Raise"]] != 0) do={
                 # check id json received is valid and redy to be used
                 :log error "error while getting config (Err.Raise fJSONLoads)";
                 :return {"status"=false; "message"="error while getting config (Err.Raise fJSONLoads)"};
