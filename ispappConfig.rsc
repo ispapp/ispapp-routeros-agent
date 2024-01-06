@@ -126,6 +126,7 @@ if (any\$topSmtpPort) do={
     }
   }
 } on-error={
+  /system scheduler disable [find name~\"ispappUpdate\" disabled=no]
   :log error \"faild to sync device configurations with the host! \\n~look in the logs to find more details~\"
 }
 #----------------- run config backup if needed
