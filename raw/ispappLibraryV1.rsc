@@ -239,21 +239,21 @@
         :local getkeytypes  [:parse "/interface/wireless/security-profiles/get [/interface/wireless/get \$1 security-profile] authentication-types"];
         :foreach k,interfaceid in=[[:parse "/interface/wireless/find"]] do={
             :local interfaceProps [[:parse "/interface/wireless/get $interfaceid"]];
-            :set ($InterfaceslocalConfigs->$k) ($interfaceProps+{
+            :set ($InterfaceslocalConfigs->$k) {
                 "if"=([[:parse "/interface/wireless/get $interfaceid name"]]);
                 "key"=([[:parse "/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa2-pre-shared-key"]]);
                 "technology"="wireless";
-            });
+            };
         };
         :local SecProfileslocalConfigs; 
         :foreach k,secid in=[[:parse "/interface/wireless/security-profile find"]] do={
             :local secProf [[:parse "/interface/wireless/security-profile get $secid"]];
             :local authtypes ($secProf->"authentication-types");
             :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
-            :set ($SecProfileslocalConfigs->$k) ($secProf+{
+            :set ($SecProfileslocalConfigs->$k) {
                 "authentication-types"=$authtypes;
                 "technology"="wireless";
-            });
+            };
         };
         :local sentbody "{}";
         :local message ("uploading " . [:len $InterfaceslocalConfigs] . " interfaces to ispapp server");
