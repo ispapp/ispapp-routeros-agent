@@ -887,7 +887,7 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :log info \"start collect all wireless interfaces from the system ...\";
-        :local wlans [/interface/wireless find];
+        :local wlans [[:parse \"/interface/wireless find\"]];
         :local getEncKey do={
             if ([:len (\$1->\"wpa-pre-shared-key\")] > 0) do={
                 :return (\$1->\"wpa-pre-shared-key\");
@@ -902,7 +902,7 @@
          if ([:len \$wlans] > 0) do={
             :local wirelessConfigs;
             foreach i,k in=\$wlans do={
-                :local temp [/interface/wireless print proplist=ssid,security-profile as-value where .id=\$k];
+                :local temp [[:parse \"/interface/wireless print proplist=ssid,security-profile as-value where .id=\$k\"]];
                 :local cmdsectemp [:parse \"/interface/wireless/security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=\\\$1\"];
                 :local secTemp [\$cmdsectemp (\$temp->0->\"security-profile\")];
                 :local thisWirelessConfig {
@@ -969,25 +969,25 @@
             } on-error={
                 # return the default dec profile in case of error
                 # adding or updating to perform interface setup with no problems
-                :return [/interface/wireless/security-profiles/get *0 name];
+                :return [[:parse \"/interface/wireless/security-profiles/get *0 name\"]];
             }
         }
         :global convertToValidFormat;
         ## start comparing local and remote configs
         foreach conf in=\$wirelessConfigs do={
             :log info \"## start comparing local and remote configs ##\";
-            :local existedinterf [/interface/wireless/find ssid=(\$conf->\"ssid\")];
+            :local finditf [:parse \"/interface/wireless/find ssid=\\\$1\"];
+            :local existedinterf [\$finditf (\$conf->\"ssid\")];
             :local newSecProfile [\$SyncSecProfile \$conf];
             if ([:len \$existedinterf] = 0) do={
                 # add new interface
                 :local NewInterName (\"ispapp_\" . [\$convertToValidFormat (\$conf->\"ssid\")]);
-                :local masterinterface [/interface/wireless/get ([/interface/wireless/find]->0) name];
+                :local masterinterface [[:parse \"/interface/wireless/get ([/interface/wireless/find]->0) name\"]];
                 :log info \"## add new interface -> \$NewInterName ##\";
                 :local addInter [:parse \"/interface/wireless/add \\\\
                     ssid=(\\\$1->\\\"ssid\\\") \\\\
                     wireless-protocol=802.11 frequency=auto mode=ap-bridge hide-ssid=no comment=ispapp \\\\
                     security-profile=(\\\$1->\\\"newSecProfile\\\") \\\\
-                    master-interface=\\\$masterinterface \\\\
                     name=(\\\$1->\\\"NewInterName\\\") \\\\
                     disabled=no;\"];
                 :local newinterface (\$conf + {\"newSecProfile\"=\$newSecProfile; \"NewInterName\"=\$NewInterName});
@@ -1013,7 +1013,7 @@
                     # remove all interfaces except the first one
                     :foreach k,intfid in=\$existedinterf do={
                         if (\$k != 0) do={
-                            /interface/wireless/remove [/interface/wireless/get \$intfid name];
+                            [[:parse \"/interface/wireless/remove [/interface/wireless/get \$intfid name]\"]];
                             :delay 1s; # wait for interface to be removed
                         }
                     }
@@ -1035,17 +1035,17 @@
         :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
         :local InterfaceslocalConfigs;
         :local getkeytypes  [:parse \"/interface/wireless/security-profiles/get [/interface/wireless/get \\\$1 security-profile] authentication-types\"];
-        :foreach k,interfaceid in=[/interface/wireless/find] do={
-            :local interfaceProps [/interface/wireless/get \$interfaceid];
+        :foreach k,interfaceid in=[[:parse \"/interface/wireless/find\"]] do={
+            :local interfaceProps [[:parse \"/interface/wireless/get \$interfaceid\"]];
             :set (\$InterfaceslocalConfigs->\$k) (\$interfaceProps+{
-                \"if\"=([/interface/wireless/get \$interfaceid name]);
-                \"key\"=([/interface/wireless/security-profile get [/interface/wireless/get \$interfaceid security-profile] wpa2-pre-shared-key]);
+                \"if\"=([[:parse \"/interface/wireless/get \$interfaceid name\"]]);
+                \"key\"=([[:parse \"/interface/wireless/security-profile get [/interface/wireless/get \$interfaceid security-profile] wpa2-pre-shared-key\"]]);
                 \"technology\"=\"wireless\";
             });
         };
         :local SecProfileslocalConfigs; 
-        :foreach k,secid in=[/interface/wireless/security-profile find] do={
-            :local secProf [/interface/wireless/security-profile get \$secid];
+        :foreach k,secid in=[[:parse \"/interface/wireless/security-profile find\"]] do={
+            :local secProf [[:parse \"/interface/wireless/security-profile get \$secid\"]];
             :local authtypes (\$secProf->\"authentication-types\");
             :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
             :set (\$SecProfileslocalConfigs->\$k) (\$secProf+{
@@ -1957,12 +1957,12 @@
         };
     }
   } else={
-    :if ([:len [/interface/wireless/find]] > 0) do={
-      :foreach i,wIfaceId in=[/interface wireless find] do={
-        :local ifName [/interface wireless get \$wIfaceId name]; 
-        :local ifMaster [/interface wireless get \$wIfaceId \"interface-type\"]; 
-        if ([/interface wireless get \$wIfaceId \"interface-type\"] = \"virtual\") do={
-          :set ifMaster [/interface wireless get \$wIfaceId \"master-interface\"]; 
+    :if ([:len [[:parse \"/interface/wireless/find\"]]] > 0) do={
+      :foreach i,wIfaceId in=[[:parse \"/interface wireless find\"]] do={
+        :local ifName [[:parse \"/interface wireless get \$wIfaceId name\"]]; 
+        :local ifMaster [[:parse \"/interface wireless get \$wIfaceId \\\"interface-type\\\"\"]]; 
+        if ([[:parse \"/interface wireless get \$wIfaceId \\\"interface-type\\\"\"]] = \"virtual\") do={
+          :set ifMaster [[:parse \"/interface wireless get \$wIfaceId \\\"master-interface\\\"\"]]; 
         }
         :local staout ({});
         :set staout [\$getWirelessStas \$ifName]
@@ -1976,7 +1976,7 @@
           \"stations\"=\$stations;
           \"interface\"=\$ifName;
           \"master-interface\"=\$ifMaster;
-          \"ssid\"=[/interface wireless get \$wIfaceId ssid];
+          \"ssid\"=[[:parse \"/interface wireless get \$wIfaceId ssid\"]];
           \"noise\"=(\$staout->\"noise\");
           \"signal0\"=(\$staout->\"signal0\");
           \"signal1\"=(\$staout->\"signal1\")
@@ -2119,23 +2119,19 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :log info \"start collect all wireless interfaces from the system ...\";
-        :local wlans [/interface wifiwave2 print proplist=disabled,security,channel,configuration as-value];
+        :local wlans [[:parse \"/interface wifiwave2 print as-value\"]];
         if ([:len \$wlans] > 0) do={
-        :local wirelessConfigs;
-        foreach i,intr in=\$wlans do={
-            :local cmdsectemp [:parse \"/interface wifiwave2 security print proplist=passphrase,authentication-types,name  as-value where  name=\\\$1\"];
-            :local cmdconftemp [:parse \"/interface wifiwave2 configuration print proplist=ssid,security  as-value where  name=\\\$1\"];
-            :local conftemp [\$cmdconftemp (\$intr->\"configuration\")];
-            :local secTemp [\$cmdsectemp (\$conftemp->\"security\")];
-            :local thisWirelessConfig {
-                \"encKey\"=(\$secTemp->0->\"passphrase\");
-                \"encType\"=(\$secTemp->0->\"authentication-types\");
-                \"ssid\"=(\$conftemp->0->\"ssid\")
-            };
-            :set (\$wirelessConfigs->\$i) \$thisWirelessConfig;
-        }
-        :log info \"collect all wireless interfaces from the system\";
-        :return { \"status\"=true; \"wirelessConfigs\"=\$wirelessConfigs };
+            :local wirelessConfigs;
+            foreach i,intr in=\$wlans do={
+                :local thisWirelessConfig {
+                    \"encKey\"=(\$intr->\"security.passphrase\");
+                    \"encType\"=(\$intr->\"security.authentication-types\");
+                    \"ssid\"=(\$intr->\"configuration.ssid\")
+                };
+                :set (\$wirelessConfigs->\$i) \$thisWirelessConfig;
+            }
+            :log info \"collect all wireless interfaces from the system\";
+            :return { \"status\"=true; \"wirelessConfigs\"=\$wirelessConfigs };
         } else={
         :log info \"collect all wireless interfaces from the system: no wireless interfaces found\";
         :return { \"status\"=false; \"message\"=\"no wireless interfaces found\" };
@@ -2160,23 +2156,27 @@
         :global SyncSecProfile do={
             # add security profile if not found
             :do {
-                :local key (\$1->\"encKey\");
-                :local tempName (\"ispapp_\" . (\$1->\"ssid\"));
-                # search for profile with this same password if exist if not just create it.
-                :local currentprfpass [:parse \"/interface wifiwave2 security print as-value where passphrase=\\\$1\"];
-                # todo: separation of sec profiles ....
-                :local foundSecProfiles [\$currentprfpass \$key]; # error 
-                :log info \"add security profile if not found: \$tempName\";
-                if ([:len \$foundSecProfiles] > 0) do={
-                    :return (\$foundSecProfiles->0->\"name\");
+                :if ([:len (\$1->\"encKey\")] > 0) do={
+                    :local key (\$1->\"encKey\");
+                    :local tempName (\"ispapp_\" . (\$1->\"ssid\"));
+                    # search for profile with this same password if exist if not just create it.
+                    :local currentprfpass [:parse \"/interface wifiwave2 security print where passphrase=\\\$1 as-value\"];
+                    # todo: separation of sec profiles ....
+                    :local foundSecProfiles [\$currentprfpass \$key]; # error 
+                    :log info \"add security profile if not found: \$tempName\";
+                    if ([:len \$foundSecProfiles] > 0) do={
+                        :return (\$foundSecProfiles->0->\"name\");
+                    } else={
+                        :local addSec  [:parse \"/interface wifiwave2 security add \\\\
+                            wps=disable \\\\
+                            name=\\\$tempName \\\\
+                            passphrase=(\\\$1->\\\"encKey\\\") \\\\
+                            authentication-types=wpa2-psk,wpa3-psk\"];
+                        :put [\$addSec \$1];
+                        :return \$tempName;
+                    }
                 } else={
-                    :local addSec  [:parse \"/interface wifiwave2 security add \\\\
-                        wps=disable \\\\
-                        name=\\\$tempName \\\\
-                        passphrase=(\\\$1->\\\"encKey\\\") \\\\
-                        authentication-types=wpa2-psk,wpa3-psk\"];
-                    :put [\$addSec \$1];
-                    :return \$tempName;
+                    :return [/interface wifiwave2 security get *0 name];
                 }
             } on-error={
                 # return the default dec profile in case of error
@@ -2188,15 +2188,15 @@
         ## start comparing local and remote configs
         foreach conf in=\$wirelessConfigs do={
             :log info \"## start comparing local and remote configs ##\";
-            :local existedinterf [/interface wifiwave2 configuration find ssid=(\$conf->\"ssid\")];
+            :local existedinterf [[:parse \"/interface wifiwave2 configuration find\"] ssid=(\$conf->\"ssid\")];
             :local newSecProfile [\$SyncSecProfile \$conf];
-            if ([:len [/interface wifiwave2 channel find]] = 0) do={
+            if ([:len [[:parse \"/interface wifiwave2 channel find\"]]] = 0) do={
                 :do {
-                    /interface wifiwave2 channel add name=ch-2ghz frequency=2412,2432,2472 width=20mhz
-                    /interface wifiwave2 channel add name=ch-5ghz frequency=5180,5260,5500 width=20/40/80mhz
+                    [[:parse \"/interface wifiwave2 channel add name=ch-2ghz frequency=2412,2432,2472 width=20mhz\"]]
+                    [[:parse \"/interface wifiwave2 channel add name=ch-5ghz frequency=5180,5260,5500 width=20/40/80mhz\"]]
                     :log debug \"add name=ch-2ghz frequency=2412,2432,2472 width=20mhz add name=ch-5ghz frequency=5180,5260,5500 width=20/40/80mhz\";
                 } on-error={
-                    :local existchnls [:tostr [/interface wifiwave2 channel print proplist=name,width as-value]];
+                    :local existchnls [:tostr [[:parse \"/interface wifiwave2 channel print as-value\"]]];
                     :log error \"faild to dual-band channels \\n existing channels: \$existchnls\"
                 }
             }
@@ -2217,7 +2217,7 @@
                 :local newinterface (\$conf + {\"newSecProfile\"=\$newSecProfile; \"NewInterName\"=\$NewInterName});
                 :log debug (\"new interface details \\n\" . [:tostr \$newinterface]);
                 :put [\$addConfig \$newinterface];
-                :foreach i,k in=[/interface wifiwave2 channel print as-value] do={
+                :foreach i,k in=[[:parse \"/interface wifiwave2 channel print as-value\"]] do={
                     # solution for muti bands 
                     :put [\$addInter \$newinterface (\$k->\"name\")];
                 }
@@ -2241,7 +2241,7 @@
                     # remove all interfaces except the first one
                     :foreach k,intfid in=\$existedinterf do={
                         if (\$k != 0) do={
-                            /interface wifiwave2 configuration remove [/interface wifiwave2 configuration get \$intfid name];
+                            [[:parse \"/interface wifiwave2 configuration remove [/interface wifiwave2 configuration get \$intfid name]\"]];
                             :delay 1s; # wait for interface to be removed
                         }
                     }
@@ -2262,18 +2262,13 @@
         :log info \"## wait for interfaces changes to be applied and can be retrieved from the device 5s ##\";
         :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
         :local InterfaceslocalConfigs;
-        :local getconfiguration  [:parse \"/interface wifiwave2 configuration print where name=\\\$1 as-value\"];
-        :local getsecurity  [:parse \"/interface wifiwave2 security print where name=\\\$1 as-value\"];
-        :foreach k,wifiwave in=[/interface wifiwave2 print as-value] do={
-            :local currentconfigs [\$getconfiguration (\$wifiwave->\"configuration\")]
-            :local currentsec [\$getsecurity (\$wifiwave->\"security\")]
+        :foreach k,wifiwave in=[[:parse \"/interface wifiwave2 print detail as-value\"]] do={
             :set (\$InterfaceslocalConfigs->\$k) {
                 \"if\"=(\$wifiwave->\"name\");
-                \"ssid\"=(\$currentconfigs->\"ssid\");
-                \"key\"=(\$getsecurity->\"passphrase\");
+                \"ssid\"=(\$wifiwave->\"configuration.ssid\");
+                \"key\"=(\$getsecurity->\"security.passphrase\");
                 \"technology\"=\"wifiwave2\";
-                \"manager\"=(\$getsecurity->\"manager\");
-                \"security_profile\"=(\$currentconfigs->\"security\")
+                \"security_profile\"=(\$wifiwave->\"security\")
             };
         };
         :local SecProfileslocalConfigs; 
@@ -2434,9 +2429,9 @@
         ## start comparing local and remote configs
         foreach conf in=\$wirelessConfigs do={
             :log info \"## start comparing local and remote configs ##\";
-            :local existedinterf [/caps-man/configuration/find ssid=(\$conf->\"ssid\")];
+            :local existedinterf [[:parse \"/caps-man/configuration/find\"] ssid=(\$conf->\"ssid\")];
             :local newSecProfile [\$SyncSecProfile \$conf];
-            if ([:len [/caps-man channel find]] = 0) do={
+            if ([:len [[:parse \"/caps-man channel find\"]]] = 0) do={
                 :do {
                     :local set2ghz [:parse \"/caps-man channel add name=ch-2ghz frequency=2412,2432,2472 control-channel-width=20mhz band=2ghz-b/g/n\"]
                     :local set5ghz [:parse \"/caps-man channel add name=ch-5ghz frequency=5180,5260,5500 control-channel-width=40mhz-turbo band=5ghz-a/n/ac\"]
@@ -2459,7 +2454,7 @@
                     disabled=no \\\\
                     channel=\\\$2 \\\\
                     configuration=(\\\$1->\\\"NewInterName\\\");\"];
-                :foreach i,k in=[/caps-man channel print as-value] do={
+                :foreach i,k in=[[:parse \"/caps-man channel print\"] as-value] do={
                     # solution for muti bands 
                     :put [\$addInter \$newinterface (\$k->\"name\")];
                 }
@@ -2467,7 +2462,7 @@
                 :local newinterface (\$conf + {\"newSecProfile\"=\$newSecProfile; \"NewInterName\"=\$NewInterName});
                 :log debug (\"new interface details \\n\" . [:tostr \$newinterface]);
                 :put [\$addconfig \$newinterface];
-                :put [/interface wifiwave2 enable \$NewInterName];
+                :put [/caps-man interface enable \$NewInterName];
                 :delay 3s; # wait for interface to be created
                 :log info \"## wait for caps interface to be created 3s ##\";
             } else={
@@ -2486,12 +2481,12 @@
                     # remove all interfaces except the first one
                     :foreach k,intfid in=\$existedinterf do={
                         if (\$k != 0) do={
-                            :local ifnamebycfg [/caps-man configuration get \$intfid name];
-                            :local ifsecbycfg [/caps-man configuration get \$intfid security];
+                            :local ifnamebycfg [[:parse \"/caps-man configuration get\"] \$intfid name];
+                            :local ifsecbycfg [[:parse \"/caps-man configuration get\"] \$intfid security];
                             if (any \$ifnamebycfg) do={
-                                /caps-man interface remove [/caps-man interface find configuration=\$ifnamebycfg];
-                                /caps-man configuration remove \$intfid;
-                                /caps-man security remove [/caps-man security find name=\$ifsecbycfg];
+                                [[:parse \"/caps-man interface remove [/caps-man interface find configuration=\$ifnamebycfg]\"]];
+                                [[:parse \"/caps-man configuration remove \$intfid\"]];
+                                [[:parse \"/caps-man security remove [/caps-man security find name=\$ifsecbycfg]\"]];
                             }
                             :delay 1s; # wait for interface to be removed
                         }
@@ -2515,7 +2510,7 @@
         :local InterfaceslocalConfigs;
         :local getconfiguration  [:parse \"/caps-man/configuration/print where name=\\\$1 as-value\"];
         :local getsecurity  [:parse \"/caps-man/security/print where name=\\\$1 as-value\"];
-        :foreach k,mancap in=[/caps-man interface print as-value] do={
+        :foreach k,mancap in=[[:parse \"/caps-man interface print as-value\"]] do={
             :local currentconfigs [\$getconfiguration (\$mancap->\"configuration\")]
             :local currentsec [\$getsecurity (\$currentconfigs->\"security\")]
             :set (\$InterfaceslocalConfigs->\$k) {
@@ -2528,7 +2523,7 @@
             };
         };
         :local SecProfileslocalConfigs; 
-        :foreach k,secprof in=[/caps-man/security print as-value] do={
+        :foreach k,secprof in=[[:parse \"/caps-man/security print as-value\"]] do={
             :local authtypes (\$secprof->\"authentication-types\");
             :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
             :set (\$SecProfileslocalConfigs->\$k) {
