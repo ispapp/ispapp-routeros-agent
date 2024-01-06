@@ -472,7 +472,7 @@
     }
   }
   :if ([$iscap]) do={
-    :foreach i,wIfaceId in=[/caps-man interface find] do={
+    :foreach i,wIfaceId in=[[:parse "/caps-man interface find"]] do={
       :local ifDetails [[:parse "/caps-man interface get $wIfaceId"]];
       :local ifName ($ifDetails->"name");
       :local ifMaster ($ifDetails->"master-interface");
@@ -484,7 +484,7 @@
       } else={
           :set stations "[]";
       }
-      :set ($cout->$i) {
+      :set ($cout->$i) ($ifDetails+{
         "stations"=$stations;
         "interface"=$ifName;
         "master-interface"=$ifMaster;
@@ -492,10 +492,10 @@
         "noise"=($staout->"noise");
         "signal0"=($staout->"signal0");
         "signal1"=($staout->"signal1")
-        };
+        });
     }
   } else={
-    :if ([:len [[:parse "/interface/wireless/find"]]] > 0) do={
+    :if ([/system/package/find name~"wifiwave2"] = "") do={
       :foreach i,wIfaceId in=[[:parse "/interface wireless find"]] do={
         :local ifDetails [[:parse "/interface wireless get $wIfaceId"]];
         :local ifName ($ifDetails->"name"); 
@@ -511,7 +511,7 @@
         } else={
           :set stations "[]";
         }
-        :set ($cout->$i) {
+        :set ($cout->$i) ($ifDetails+{
           "stations"=$stations;
           "interface"=$ifName;
           "master-interface"=$ifMaster;
@@ -519,7 +519,7 @@
           "noise"=($staout->"noise");
           "signal0"=($staout->"signal0");
           "signal1"=($staout->"signal1")
-          };
+          });
       }
     } else={
       :foreach i,wIfaceId in=[[:parse "/interface wifiwave2 find"]] do={
@@ -534,7 +534,7 @@
         } else={
           :set stations "[]";
         }
-        :set ($cout->$i) {
+        :set ($cout->$i) ($ifDetails+{
         "stations"=$stations;
         "interface"=$ifName;
         "master-interface"=$ifMaster;
@@ -542,7 +542,7 @@
         "noise"=($staout->"noise");
         "signal0"=($staout->"signal0");
         "signal1"=($staout->"signal1")
-        };
+        });
       }
     }
   }
