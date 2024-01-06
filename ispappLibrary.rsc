@@ -828,6 +828,7 @@
     :global updateIntervalSeconds;
     if ([:typeof \$1] != \"array\") do={:return \"error input type (not array)\";}
     :local configs \$1;
+    /system scheduler enable [find name~\"ispappUpdate\"]
     if ([:len (\$configs->\"host\")] > 0) do={
         :set lcf (\$configs->\"host\"->\"lastConfigChangeTsMs\");
         :set outageIntervalSeconds [:tonum (\$configs->\"host\"->\"outageIntervalSeconds\")];
@@ -872,7 +873,7 @@
                     :log error [:tostr \$res];
                     :return {\"status\"=false; \"message\"=\$res};
                 } else={
-                    :log info \"check id json received is valid and redy to be used with response: \$res\";
+                    :log info \"check id json received is valid and ready to be used with response: \$res\";
                     :put [\$fillGlobalConsts \$res];
                     :return { \"response\"=\$res; \"status\"=true };
                 }
