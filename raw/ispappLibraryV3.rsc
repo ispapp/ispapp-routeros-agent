@@ -13,7 +13,6 @@
 :do {
     :global getAllConfigs;
     :global ispappHTTPClient;
-    :global fillGlobalConsts;
     if ([:len [/system/script/job find script~"ispappUpdate"]] > 0) do={
         :return {"status"=false; "message"="waiting update to finish first!"};
     }
@@ -21,6 +20,7 @@
         # get configuration from the server
         :do {
             :global ispappHTTPClient;
+            :global fillGlobalConsts;
             :local res;
             :local i 0;
             # :if ([$ispappHTTPClient m="get" a="update"]->"status" = false) do={
@@ -255,7 +255,6 @@
 # Function to collect all Caps manager interfaces and format them to be sent to server.
 :global CapsConfigSync do={
     :global getAllConfigs;
-    :global fillGlobalConsts;
     :global ispappHTTPClient;
     if ([:len [/system/script/job find script~"ispappUpdate"]] > 0) do={
         :return {"status"=false; "message"="waiting update to finish first!"};
@@ -264,6 +263,7 @@
         # get configuration from the server
         :do {
             :global ispappHTTPClient;
+            :global fillGlobalConsts;
             :local res;
             :local i 0;
             :while (([:len [:find [:tostr $res] "Err.Raise"]] != 0 || [:len $res] = 0) && $i < 3) do={
