@@ -88,7 +88,7 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :log info "start collect all wireless interfaces from the system ...";
-        :local wlans [/interface/wireless find];
+        :local wlans [[:parse "/interface/wireless find"]];
         :local getEncKey do={
             if ([:len ($1->"wpa-pre-shared-key")] > 0) do={
                 :return ($1->"wpa-pre-shared-key");
@@ -103,7 +103,7 @@
          if ([:len $wlans] > 0) do={
             :local wirelessConfigs;
             foreach i,k in=$wlans do={
-                :local temp [/interface/wireless print proplist=ssid,security-profile as-value where .id=$k];
+                :local temp [[:parse "/interface/wireless print proplist=ssid,security-profile as-value where .id=$k"]];
                 :local cmdsectemp [:parse "/interface/wireless/security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=\$1"];
                 :local secTemp [$cmdsectemp ($temp->0->"security-profile")];
                 :local thisWirelessConfig {
@@ -170,25 +170,25 @@
             } on-error={
                 # return the default dec profile in case of error
                 # adding or updating to perform interface setup with no problems
-                :return [/interface/wireless/security-profiles/get *0 name];
+                :return [[:parse "/interface/wireless/security-profiles/get *0 name"]];
             }
         }
         :global convertToValidFormat;
         ## start comparing local and remote configs
         foreach conf in=$wirelessConfigs do={
             :log info "## start comparing local and remote configs ##";
-            :local existedinterf [/interface/wireless/find ssid=($conf->"ssid")];
+            :local finditf [:parse "/interface/wireless/find ssid=\$1"];
+            :local existedinterf [$finditf ($conf->"ssid")];
             :local newSecProfile [$SyncSecProfile $conf];
             if ([:len $existedinterf] = 0) do={
                 # add new interface
                 :local NewInterName ("ispapp_" . [$convertToValidFormat ($conf->"ssid")]);
-                :local masterinterface [/interface/wireless/get ([/interface/wireless/find]->0) name];
+                :local masterinterface [[:parse "/interface/wireless/get ([/interface/wireless/find]->0) name"]];
                 :log info "## add new interface -> $NewInterName ##";
                 :local addInter [:parse "/interface/wireless/add \\
                     ssid=(\$1->\"ssid\") \\
                     wireless-protocol=802.11 frequency=auto mode=ap-bridge hide-ssid=no comment=ispapp \\
                     security-profile=(\$1->\"newSecProfile\") \\
-                    master-interface=\$masterinterface \\
                     name=(\$1->\"NewInterName\") \\
                     disabled=no;"];
                 :local newinterface ($conf + {"newSecProfile"=$newSecProfile; "NewInterName"=$NewInterName});
@@ -214,7 +214,7 @@
                     # remove all interfaces except the first one
                     :foreach k,intfid in=$existedinterf do={
                         if ($k != 0) do={
-                            /interface/wireless/remove [/interface/wireless/get $intfid name];
+                            [[:parse "/interface/wireless/remove [/interface/wireless/get $intfid name]"]];
                             :delay 1s; # wait for interface to be removed
                         }
                     }
@@ -236,17 +236,17 @@
         :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
         :local InterfaceslocalConfigs;
         :local getkeytypes  [:parse "/interface/wireless/security-profiles/get [/interface/wireless/get \$1 security-profile] authentication-types"];
-        :foreach k,interfaceid in=[/interface/wireless/find] do={
-            :local interfaceProps [/interface/wireless/get $interfaceid];
+        :foreach k,interfaceid in=[[:parse "/interface/wireless/find"]] do={
+            :local interfaceProps [[:parse "/interface/wireless/get $interfaceid"]];
             :set ($InterfaceslocalConfigs->$k) ($interfaceProps+{
-                "if"=([/interface/wireless/get $interfaceid name]);
-                "key"=([/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa2-pre-shared-key]);
+                "if"=([[:parse "/interface/wireless/get $interfaceid name"]]);
+                "key"=([[:parse "/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa2-pre-shared-key"]]);
                 "technology"="wireless";
             });
         };
         :local SecProfileslocalConfigs; 
-        :foreach k,secid in=[/interface/wireless/security-profile find] do={
-            :local secProf [/interface/wireless/security-profile get $secid];
+        :foreach k,secid in=[[:parse "/interface/wireless/security-profile find"]] do={
+            :local secProf [[:parse "/interface/wireless/security-profile get $secid"]];
             :local authtypes ($secProf->"authentication-types");
             :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
             :set ($SecProfileslocalConfigs->$k) ($secProf+{

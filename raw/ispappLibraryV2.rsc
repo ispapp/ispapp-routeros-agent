@@ -492,12 +492,12 @@
         };
     }
   } else={
-    :if ([:len [/interface/wireless/find]] > 0) do={
-      :foreach i,wIfaceId in=[/interface wireless find] do={
-        :local ifName [/interface wireless get $wIfaceId name]; 
-        :local ifMaster [/interface wireless get $wIfaceId "interface-type"]; 
-        if ([/interface wireless get $wIfaceId "interface-type"] = "virtual") do={
-          :set ifMaster [/interface wireless get $wIfaceId "master-interface"]; 
+    :if ([:len [[:parse "/interface/wireless/find"]]] > 0) do={
+      :foreach i,wIfaceId in=[[:parse "/interface wireless find"]] do={
+        :local ifName [[:parse "/interface wireless get $wIfaceId name"]]; 
+        :local ifMaster [[:parse "/interface wireless get $wIfaceId \"interface-type\""]]; 
+        if ([[:parse "/interface wireless get $wIfaceId \"interface-type\""]] = "virtual") do={
+          :set ifMaster [[:parse "/interface wireless get $wIfaceId \"master-interface\""]]; 
         }
         :local staout ({});
         :set staout [$getWirelessStas $ifName]
@@ -511,7 +511,7 @@
           "stations"=$stations;
           "interface"=$ifName;
           "master-interface"=$ifMaster;
-          "ssid"=[/interface wireless get $wIfaceId ssid];
+          "ssid"=[[:parse "/interface wireless get $wIfaceId ssid"]];
           "noise"=($staout->"noise");
           "signal0"=($staout->"signal0");
           "signal1"=($staout->"signal1")
