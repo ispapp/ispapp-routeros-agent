@@ -109,7 +109,14 @@ if (any\$topSmtpPort) do={
   :global WirelessInterfacesConfigSync;
   :global Wifewave2InterfacesConfigSync;
   :global CapsConfigSync;
-  :if (([[:parse \"/caps-man manager print as-value\"]]->\"enabled\")) do={
+  :local iscap do={
+    :do {
+      :return ([[:parse \"/caps-man manager print as-value\"]]->\"enabled\");
+    } on-error={
+      :return false;
+    }
+  }
+  :if ([\$iscap]) do={
     :put [\$CapsConfigSync]
   } else={
     :if ([/system/package/find name~\"wifiwave2\"] = \"\") do={
