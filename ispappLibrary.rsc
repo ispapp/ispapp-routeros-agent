@@ -828,13 +828,13 @@
     :global updateIntervalSeconds;
     if ([:typeof \$1] != \"array\") do={:return \"error input type (not array)\";}
     :local configs \$1;
-    /system scheduler enable [find name~\"ispappUpdate\"]
+    /system scheduler enable [find name~\"ispappUpdate\" disabled=yes]
     if ([:len (\$configs->\"host\")] > 0) do={
         :set lcf (\$configs->\"host\"->\"lastConfigChangeTsMs\");
         :set outageIntervalSeconds [:tonum (\$configs->\"host\"->\"outageIntervalSeconds\")];
         :set updateIntervalSeconds [:tonum (\$configs->\"host\"->\"updateIntervalSeconds\")];
         :set simpleRotatedKey (\$configs->\"host\"->\"simpleRotatedKey\");
-        if (any\$lcf) do={
+        if ([:len \$lcf] > 0) do={
             if ([:len [/system script find where name=\"ispappLastConfigChangeTsMs\"]] > 0) do={
                 /system script set \"ispappLastConfigChangeTsMs\" source=\":global lastConfigChangeTsMs; :set lastConfigChangeTsMs \$lcf;\";
             }
@@ -846,7 +846,6 @@
 :global WirelessInterfacesConfigSync do={
     :global getAllConfigs;
     :global joinArray;
-    :global fillGlobalConsts;
     :global ispappHTTPClient;
     if ([:len [/system/script/job find script~\"ispappUpdate\"]] > 0) do={
         :return {\"status\"=false; \"message\"=\"waiting update to finish first!\"};
@@ -855,6 +854,7 @@
         # get configuration from the server
         :do {
             :global ispappHTTPClient;
+            :global fillGlobalConsts;
             :local res;
             :local i 0;
             # :if ([\$ispappHTTPClient m=\"get\" a=\"update\"]->\"status\" = false) do={
