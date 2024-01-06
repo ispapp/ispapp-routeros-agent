@@ -79,11 +79,6 @@
 # Function to collect all information needed yo be sent to config endpoint
 # usage: 
 #   :put [$getAllConfigs <interfacesinfos array>] 
-# result will be in this format:
-#      ("{"clientInfo":"$topClientInfo", "osVersion":"$osversion", "hardwareMake":"$hardwaremake",
-#     "hardwareModel":"$hardwaremodel","hardwareCpuInfo":"$cpu","os":"$os","osBuildDate":$osbuilddate
-#     ,"fw":"$topClientInfo","hostname":"$hostname","interfaces":[$ifaceDataArray],"wirelessConfigured":[$wapArray],
-#     "webshellSupport":true,"bandwidthTestSupport":true,"firmwareUpgradeSupport":true,"wirelessSupport":true}");
 :global getAllConfigs do={
     :do {
         :global getRouterboard;
@@ -469,10 +464,18 @@
   :global getWirelessStas;
   :global getWifiwave2Stas;
   :local cout ({});
-  :if (([/caps-man manager print as-value]->"enabled")) do={
+  :local iscap do={
+    :do {
+      :return ([[:parse "/caps-man manager print as-value"]]->"enabled");
+    } on-error={
+      :return false;
+    }
+  }
+  :if ([$iscap]) do={
     :foreach i,wIfaceId in=[/caps-man interface find] do={
-      :local ifName [/caps-man interface get $wIfaceId name];
-      :local ifMaster [/caps-man interface get $wIfaceId "master-interface"];
+      :local ifDetails [[:parse "/caps-man interface get $wIfaceId"]];
+      :local ifName ($ifDetails->"name");
+      :local ifMaster ($ifDetails->"master-interface");
       :local staout;
       :set staout [$getCapsStas $ifName];
       :local stations ({});
@@ -485,7 +488,7 @@
         "stations"=$stations;
         "interface"=$ifName;
         "master-interface"=$ifMaster;
-        "ssid"=[/caps-man interface get $wIfaceId configuration.ssid];
+        "ssid"=($ifDetails->"configuration.ssid");
         "noise"=($staout->"noise");
         "signal0"=($staout->"signal0");
         "signal1"=($staout->"signal1")
@@ -494,10 +497,11 @@
   } else={
     :if ([:len [[:parse "/interface/wireless/find"]]] > 0) do={
       :foreach i,wIfaceId in=[[:parse "/interface wireless find"]] do={
-        :local ifName [[:parse "/interface wireless get $wIfaceId name"]]; 
-        :local ifMaster [[:parse "/interface wireless get $wIfaceId \"interface-type\""]]; 
-        if ([[:parse "/interface wireless get $wIfaceId \"interface-type\""]] = "virtual") do={
-          :set ifMaster [[:parse "/interface wireless get $wIfaceId \"master-interface\""]]; 
+        :local ifDetails [[:parse "/interface wireless get $wIfaceId"]];
+        :local ifName ($ifDetails->"name"); 
+        :local ifMaster ($ifDetails->"interface-type"); 
+        if ($ifMaster = "virtual") do={
+          :set ifMaster ($ifDetails->"master-interface"); 
         }
         :local staout ({});
         :set staout [$getWirelessStas $ifName]
@@ -511,17 +515,18 @@
           "stations"=$stations;
           "interface"=$ifName;
           "master-interface"=$ifMaster;
-          "ssid"=[[:parse "/interface wireless get $wIfaceId ssid"]];
+          "ssid"=($ifDetails->"ssid");
           "noise"=($staout->"noise");
           "signal0"=($staout->"signal0");
           "signal1"=($staout->"signal1")
           };
       }
     } else={
-      :foreach i,wIfaceId in=[/interface wifiwave2 find] do={
+      :foreach i,wIfaceId in=[[:parse "/interface wifiwave2 find"]] do={
         :local staout ({});
-        :local ifName [/interface wifiwave2 get $wIfaceId name]; 
-        :local ifMaster [/interface wifiwave2 get $wIfaceId "master-interface"]; 
+        :local ifDetails [[:parse "/interface wifiwave2 get $wIfaceId"]];
+        :local ifName ($ifDetails->"name"); 
+        :local ifMaster ($ifDetails->"master-interface"); 
         :set staout [$getWifiwave2Stas $ifName]
         :local stations ({});
         :if ([:len ($staout->"stations")] > 0) do={
@@ -533,7 +538,7 @@
         "stations"=$stations;
         "interface"=$ifName;
         "master-interface"=$ifMaster;
-        "ssid"=[/interface wifiwave2 get $wIfaceId configuration.ssid];
+        "ssid"=($ifDetails->"configuration.ssid");
         "noise"=($staout->"noise");
         "signal0"=($staout->"signal0");
         "signal1"=($staout->"signal1")
