@@ -484,7 +484,7 @@
       } else={
           :set stations "[]";
       }
-      :set ($cout->$i) ($ifDetails+{
+      :set ($cout->$i) {
         "stations"=$stations;
         "interface"=$ifName;
         "master-interface"=$ifMaster;
@@ -492,7 +492,7 @@
         "noise"=($staout->"noise");
         "signal0"=($staout->"signal0");
         "signal1"=($staout->"signal1")
-        });
+        };
     }
   } else={
     :if ([/system/package/find name~"wifiwave2"] = "") do={
@@ -511,7 +511,7 @@
         } else={
           :set stations "[]";
         }
-        :set ($cout->$i) ($ifDetails+{
+        :set ($cout->$i) {
           "stations"=$stations;
           "interface"=$ifName;
           "master-interface"=$ifMaster;
@@ -519,7 +519,7 @@
           "noise"=($staout->"noise");
           "signal0"=($staout->"signal0");
           "signal1"=($staout->"signal1")
-          });
+          };
       }
     } else={
       :foreach i,wIfaceId in=[[:parse "/interface wifiwave2 find"]] do={
@@ -534,7 +534,7 @@
         } else={
           :set stations "[]";
         }
-        :set ($cout->$i) ($ifDetails+{
+        :set ($cout->$i) {
         "stations"=$stations;
         "interface"=$ifName;
         "master-interface"=$ifMaster;
@@ -542,7 +542,7 @@
         "noise"=($staout->"noise");
         "signal0"=($staout->"signal0");
         "signal1"=($staout->"signal1")
-        });
+        };
       }
     }
   }
