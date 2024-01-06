@@ -146,7 +146,7 @@ add name=ispappInit on-event=ispappInit policy=\
 :log debug ("ispappInit scheduler added")
 add interval=5s name=ispappUpdate on-event=ispappUpdate policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
-    start-time=startup
+    start-time=startup disabled=yes
 :log debug ("ispappUpdate scheduler added")
 add interval=5m name=ispappConfig on-event=ispappConfig policy=\
     ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon \
