@@ -84,10 +84,11 @@
         :global getRouterboard;
         :global rosTimestringSec;
         :global toJson;
+        :global getPublicIp;
         :global topClientInfo;
         :local data;
-        :local buildTime [/system resource get build-time];
-        :local osbuilddate [$rosTimestringSec $buildTime];
+        :local resources [/system resource get];
+        :local osbuilddate [$rosTimestringSec ($resources->"build-time")];
         :local interfaces;
         foreach k,v in=[/interface/find] do={
             :local Name [/interface get $v name];
@@ -99,28 +100,31 @@
                 "defaultIf"=[$DefaultName $v]
             };
         }
-        :set osbuilddate [:tostr $osbuilddate];
         :local hdwModelN "";
         :local hdwSerialN "";
-        
         :set data {
             "clientInfo"=$topClientInfo;
-            "osVersion"=[/system resource get version];
-            "hardwareMake"=[/system resource get platform];
-            "hardwareModel"=[/system resource get board-name];
+            "osVersion"=($resources->"version");
+            "os"=[/system package get 0 name];
+            "hardwareMake"=($resources->"platform");
+            "hardwareModel"=($resources->"board-name");
             "hardwareModelNumber"=([$getRouterboard]->"mn");
             "hardwareSerialNumber"=([$getRouterboard]->"sn");
-            "hardwareCpuInfo"=[/system resource get cpu];
-            "osBuildDate"=[$rosTimestringSec [/system resource get build-time]];
-            "hostname"=[/system identity get name];
-            "os"=[/system package get 0 name];
+            "hardwareCpuInfo"=($resources->"cpu");
+            "osBuildDate"=$osbuilddate;
+            "hostname"=[:tostr [/system identity get name]];
             "wirelessConfigured"=$1;
             "webshellSupport"=true;
+            "uptime"=$osbuilddate;
             "firmwareUpgradeSupport"=true;
             "wirelessSupport"=true;
+            "sequenceNumber"=([:tonum [/system/script/get ispappConfig run-count]] + 1)
             "interfaces"=$interfaces;
             "security-profiles"=$2;
+            "lastConfigRequest"=[:tonum $lastConfigChangeTsMs];
             "bandwidthTestSupport"=true;
+            "outsideIp"=[$getPublicIp];
+            "usingWebSocket"=false;
             "fw"=$topClientInfo
         };
         :local json [$toJson $data];
@@ -199,7 +203,8 @@
   :local cout ({});
   :foreach i,iface in=[/interface find] do={
     :local ifaceprops [/interface get $iface];
-    :set ($cout->$i) ($ifaceprops + {
+    :local maccount [:len [/ip arp find where interface=$ifaceName]];
+    :set ($cout->$i) {
     "if"=($ifaceprops->"name");
     "recBytes"=($ifaceprops->"rx-byte");
     "recPackets"=($ifaceprops->"rx-packet");
@@ -210,8 +215,8 @@
     "sentErrors"=($ifaceprops->"tx-error");
     "sentDrops"=($ifaceprops->"tx-drop");
     "carrierChanges"=($ifaceprops->"link-downs");
-    "macs"=[:len [/ip arp find where interface=$ifaceName]]
-    })
+    "macs"=$maccount
+    };
   }
   :return $cout;
 }

@@ -136,8 +136,6 @@ foreach envVarId in=[/system script environment find] do={
   :delay 3s
 } on-error={:put "Error fetching ispappUpdate.rsc"; :delay 1s}
 :put "ispappUpdate.rsc"
-/system script add name=ispappLastConfigChangeTsMs;
-/system script set "ispappLastConfigChangeTsMs" source=":global lastConfigChangeTsMs; :set lastConfigChangeTsMs $lcf;";
 :log info ("Starting Mikrotik Script")
 /system scheduler
 add name=ispappInit on-event=ispappInit policy=\

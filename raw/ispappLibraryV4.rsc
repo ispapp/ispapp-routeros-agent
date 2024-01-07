@@ -35,6 +35,14 @@
       });
     }
 }
+# get public ip
+:global getPublicIp do={
+  :do {
+    :return [:tostr [:resolve myip.opendns.com server=208.67.222.222]];
+  } on-error={
+    :return "0.0.0.0";
+  }
+}
 # Function to join all collectect metrics
 :global getCollections do={
     :local cout ({});
@@ -457,4 +465,34 @@
     "compatible"=([$version $thisversion] >= [$version $cmp])
   }
 };
+# convert buit-time to timestamp
+:global getTimestamp do={
+  # Nov/09/2023 07:45:06 - input ›
+  :if (!any$1) do={:return 0;}
+  :global strcaseconv;
+  :local pYear [:pick $1 7 11];
+  :local pday [:pick $1 4 6];
+  :local pmonth [:pick $1 0 3];
+  :local phour [:pick $1 12 14];
+  :local pminute [:pick $1 15 17];
+  :local psecond [:pick $1 18 20];
+  :local monthNames [:toarray "jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec"];
+  :local monthDays (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+  :local monthName ([$strcaseconv $pmonth]->"lower");
+  :local monthNum ([:find $monthNames $monthName]);
+  :put ($monthNum);
+  :local month 0;
+  :foreach i in=[:pick $monthDays 0 $monthNum] do={ :set month ($month + ([:tonum $1] * 86400)) };
+  :local day (([:tonum $pday] - 1) * 86400)
+  :local years ([:tonum $pYear] - 1970);
+  :local leapy (([:tonum $pYear] - 1972) / 4);
+  :local noleapy ($years - $leapy)
+  if ((([:tonum $pYear] - 1970) % 4) = 2) do={
+    :set leapy ($leapy - 1);
+    if (($monthNum + 1) >= 2) do={ :set month ($month - 86400); }
+  } else={ :set noleapy ($noleapy - 1) }
+  :set years (($leapy * 31622400) + ($noleapy * 31536000))
+  :local time ((([:tonum $phour] - 1)*3600)+(([:tonum $pminute] - 1)*60)+([:tonum $psecond]))
+  :return ($month + $day + $years + $time);
+}
 :put "\t V4 Library loaded! (;";

@@ -26,6 +26,7 @@
     :global lcf;
     :global outageIntervalSeconds;
     :global simpleRotatedKey;
+    :global lastConfigChangeTsMs;
     :global updateIntervalSeconds;
     if ([:typeof $1] != "array") do={:return "error input type (not array)";}
     :local configs $1;
@@ -36,9 +37,7 @@
         :set updateIntervalSeconds [:tonum ($configs->"host"->"updateIntervalSeconds")];
         :set simpleRotatedKey ($configs->"host"->"simpleRotatedKey");
         if ([:len $lcf] > 0) do={
-            if ([:len [/system script find where name="ispappLastConfigChangeTsMs"]] > 0) do={
-                /system script set "ispappLastConfigChangeTsMs" source=":global lastConfigChangeTsMs; :set lastConfigChangeTsMs $lcf;";
-            }
+            :set lastConfigChangeTsMs $lcf;
         }
     }
     :return "done updating Global Consts";
