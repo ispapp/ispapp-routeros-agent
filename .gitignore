@@ -1,0 +1,4 @@
+raw/test.rsc
+raw/old*.rsc
+.vscode/
+test.json
