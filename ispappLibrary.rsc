@@ -825,6 +825,7 @@
     :global lcf;
     :global outageIntervalSeconds;
     :global simpleRotatedKey;
+    :global lastConfigChangeTsMs;
     :global updateIntervalSeconds;
     if ([:typeof \$1] != \"array\") do={:return \"error input type (not array)\";}
     :local configs \$1;
@@ -835,9 +836,7 @@
         :set updateIntervalSeconds [:tonum (\$configs->\"host\"->\"updateIntervalSeconds\")];
         :set simpleRotatedKey (\$configs->\"host\"->\"simpleRotatedKey\");
         if ([:len \$lcf] > 0) do={
-            if ([:len [/system script find where name=\"ispappLastConfigChangeTsMs\"]] > 0) do={
-                /system script set \"ispappLastConfigChangeTsMs\" source=\":global lastConfigChangeTsMs; :set lastConfigChangeTsMs \$lcf;\";
-            }
+            :set lastConfigChangeTsMs \$lcf;
         }
     }
     :return \"done updating Global Consts\";
@@ -1550,10 +1549,11 @@
         :global getRouterboard;
         :global rosTimestringSec;
         :global toJson;
+        :global getPublicIp;
         :global topClientInfo;
         :local data;
-        :local buildTime [/system resource get build-time];
-        :local osbuilddate [\$rosTimestringSec \$buildTime];
+        :local resources [/system resource get];
+        :local osbuilddate [\$rosTimestringSec (\$resources->\"build-time\")];
         :local interfaces;
         foreach k,v in=[/interface/find] do={
             :local Name [/interface get \$v name];
@@ -1565,28 +1565,31 @@
                 \"defaultIf\"=[\$DefaultName \$v]
             };
         }
-        :set osbuilddate [:tostr \$osbuilddate];
         :local hdwModelN \"\";
         :local hdwSerialN \"\";
-        
         :set data {
             \"clientInfo\"=\$topClientInfo;
-            \"osVersion\"=[/system resource get version];
-            \"hardwareMake\"=[/system resource get platform];
-            \"hardwareModel\"=[/system resource get board-name];
+            \"osVersion\"=(\$resources->\"version\");
+            \"os\"=[/system package get 0 name];
+            \"hardwareMake\"=(\$resources->\"platform\");
+            \"hardwareModel\"=(\$resources->\"board-name\");
             \"hardwareModelNumber\"=([\$getRouterboard]->\"mn\");
             \"hardwareSerialNumber\"=([\$getRouterboard]->\"sn\");
-            \"hardwareCpuInfo\"=[/system resource get cpu];
-            \"osBuildDate\"=[\$rosTimestringSec [/system resource get build-time]];
-            \"hostname\"=[/system identity get name];
-            \"os\"=[/system package get 0 name];
+            \"hardwareCpuInfo\"=(\$resources->\"cpu\");
+            \"osBuildDate\"=\$osbuilddate;
+            \"hostname\"=[:tostr [/system identity get name]];
             \"wirelessConfigured\"=\$1;
             \"webshellSupport\"=true;
+            \"uptime\"=\$osbuilddate;
             \"firmwareUpgradeSupport\"=true;
             \"wirelessSupport\"=true;
+            \"sequenceNumber\"=([:tonum [/system/script/get ispappConfig run-count]] + 1)
             \"interfaces\"=\$interfaces;
             \"security-profiles\"=\$2;
+            \"lastConfigRequest\"=[:tonum \$lastConfigChangeTsMs];
             \"bandwidthTestSupport\"=true;
+            \"outsideIp\"=[\$getPublicIp];
+            \"usingWebSocket\"=false;
             \"fw\"=\$topClientInfo
         };
         :local json [\$toJson \$data];
@@ -1665,7 +1668,8 @@
   :local cout ({});
   :foreach i,iface in=[/interface find] do={
     :local ifaceprops [/interface get \$iface];
-    :set (\$cout->\$i) (\$ifaceprops + {
+    :local maccount [:len [/ip arp find where interface=\$ifaceName]];
+    :set (\$cout->\$i) {
     \"if\"=(\$ifaceprops->\"name\");
     \"recBytes\"=(\$ifaceprops->\"rx-byte\");
     \"recPackets\"=(\$ifaceprops->\"rx-packet\");
@@ -1676,8 +1680,8 @@
     \"sentErrors\"=(\$ifaceprops->\"tx-error\");
     \"sentDrops\"=(\$ifaceprops->\"tx-drop\");
     \"carrierChanges\"=(\$ifaceprops->\"link-downs\");
-    \"macs\"=[:len [/ip arp find where interface=\$ifaceName]]
-    })
+    \"macs\"=\$maccount
+    };
   }
   :return \$cout;
 }
@@ -2653,6 +2657,14 @@
       });
     }
 }
+# get public ip
+:global getPublicIp do={
+  :do {
+    :return [:tostr [:resolve myip.opendns.com server=208.67.222.222]];
+  } on-error={
+    :return \"0.0.0.0\";
+  }
+}
 # Function to join all collectect metrics
 :global getCollections do={
     :local cout ({});
@@ -3075,4 +3087,34 @@
     \"compatible\"=([\$version \$thisversion] >= [\$version \$cmp])
   }
 };
+# convert buit-time to timestamp
+:global getTimestamp do={
+  # Nov/09/2023 07:45:06 - input ›
+  :if (!any\$1) do={:return 0;}
+  :global strcaseconv;
+  :local pYear [:pick \$1 7 11];
+  :local pday [:pick \$1 4 6];
+  :local pmonth [:pick \$1 0 3];
+  :local phour [:pick \$1 12 14];
+  :local pminute [:pick \$1 15 17];
+  :local psecond [:pick \$1 18 20];
+  :local monthNames [:toarray \"jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec\"];
+  :local monthDays (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+  :local monthName ([\$strcaseconv \$pmonth]->\"lower\");
+  :local monthNum ([:find \$monthNames \$monthName]);
+  :put (\$monthNum);
+  :local month 0;
+  :foreach i in=[:pick \$monthDays 0 \$monthNum] do={ :set month (\$month + ([:tonum \$1] * 86400)) };
+  :local day (([:tonum \$pday] - 1) * 86400)
+  :local years ([:tonum \$pYear] - 1970);
+  :local leapy (([:tonum \$pYear] - 1972) / 4);
+  :local noleapy (\$years - \$leapy)
+  if ((([:tonum \$pYear] - 1970) % 4) = 2) do={
+    :set leapy (\$leapy - 1);
+    if ((\$monthNum + 1) >= 2) do={ :set month (\$month - 86400); }
+  } else={ :set noleapy (\$noleapy - 1) }
+  :set years ((\$leapy * 31622400) + (\$noleapy * 31536000))
+  :local time ((([:tonum \$phour] - 1)*3600)+(([:tonum \$pminute] - 1)*60)+([:tonum \$psecond]))
+  :return (\$month + \$day + \$years + \$time);
+}
 :put \"\\t V4 Library loaded! (;\";"
