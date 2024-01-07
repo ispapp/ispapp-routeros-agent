@@ -39,7 +39,7 @@
             const apiUrl = 'https://filebin.net/';
             const binId = 'ispapp1010';
             const filename = 'script';
-            const fileuri = `https://github.com/ispapp/ispapp-routeros-agent/raw/${branch}/ispapp.rsc`
+            const fileuri = `https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/${branch}/ispapp.rsc`
             console.log({fileuri});
             fetch(fileuri).then(s=>s.text()).then(textContent=>{
                 const installCommand = `/tool fetch url="https://filebin.net/${binId}/${filename}" dst-path="install.rsc"; /import install.rsc`;
