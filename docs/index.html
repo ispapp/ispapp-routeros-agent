@@ -10,6 +10,8 @@
     <meta name="author" content="Your Name">
     <meta name="robots" content="index, follow">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/gh/loadingio/ldbutton@v1.0.1/dist/ldbtn.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js"></script>
     <title>Generate Install Command</title>
 </head>
 
@@ -30,56 +32,68 @@
                 <input type="text" id="topDomain" name="topDomain" class="mt-1 p-2 w-full border rounded-md">
             </div>
             <div class="flex justify-center">
-                <button type="button" onclick="openModal()" class="bg-blue-500 text-white p-2 rounded-md">Generate
-                    Install Command</button>
+                <button type="button" id="submitbtn" onclick="openModal()"
+                    class="btn btn-primary bg-blue-500 text-white p-2 rounded-md">Generate
+                    Install Command
+                </button>
             </div>
         </form>
     </div>
     <!-- Modal -->
     <div id="myModal"
-        class="modal min-w-[400px] hidden fixed inset-0 bg-gray-50 bg-opacity-75 rounded-md flex items-center justify-center">
+        class="modal hidden fixed inset-0 bg-gray-50 bg-opacity-75 rounded-md flex items-center justify-center">
         <div class="bg-white p-8 rounded shadow-md">
             <h2 class="text-2xl font-semibold mb-4">Generated Install Command</h2>
-            <pre id="installCommand" class="overflow-auto max-h-60 p-2 bg-gray-100 border rounded-md"></pre>
+            <pre id="installCommand" class="min-w-[500px] overflow-auto max-h-60 p-2 bg-gray-100 border rounded-md text-nowrap"></pre>
             <button onclick="closeModal()" class="mt-4 bg-blue-500 text-white p-2 rounded-md">Close</button>
+            <button class="copy mt-4 bg-green-500 text-white p-2 rounded-md" data-clipboard-target="#installCommand">
+                Copy to clipboard
+            </button>
         </div>
     </div>
     <script>
         async function dpaste(content, cid) {
             var response = await fetch("https://dpaste.com/api/v2/", {
                 method: "POST",
-                headers: { 
+                headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization":"Key "+cid
                 },
                 body: content,
             });
             return response.text();
         }
         function openModal() {
+            new ClipboardJS('.copy');
+            const btn = document.getElementById('submitbtn');
             const branch = document.getElementById('branch').value;
             const topKey = document.getElementById('topKey').value;
             const topDomain = document.getElementById('topDomain').value;
-            const cid = ' e18216cf301f6f73';
+            const cid = 'e18216cf301f6f73';
             const fileuri = `https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/${branch}/ispapp.rsc`
             console.log({ fileuri });
+            btn?.classList.toggle("ld-ext-right");
             fetch(fileuri).then(s => s.text()).then(textContent => {
-                let currentscript = textContent.replace("#####DOMAIN#####", topDomain)
-                currentscript = textContent.replace("#####HOST_KEY#####", topKey)
-                currentscript = textContent.replace("#####bandswtest#####", "3.239.254.95")
-                currentscript = textContent.replace("#####btest#####", "btest")
-                currentscript = textContent.replace("#####btp#####", "0XSYIGkRlP6MUQJMZMdrogi2")
+                // var currentscript = textContent.replace("#####DOMAIN#####", topDomain)
+                // currentscript = currentscript.replace("#####HOST_KEY#####", topKey)
+                // currentscript = currentscript.replace("#####bandswtest#####", "3.239.254.95")
+                // currentscript = currentscript.replace("#####btest#####", "btest")
+                // currentscript = currentscript.replace("#####btp#####", "0XSYIGkRlP6MUQJMZMdrogi2")
                 const postData = {
                     expiry_days: 1,
                     content: textContent,
                 };
                 const formData = new URLSearchParams(postData);
                 dpaste(formData, cid).then(paste_url => {
-                    const installCommand = `/tool fetch url="${paste_url}.txt" dst-path="install.rsc"; /import install.rsc`;
+                    btn?.classList.toggle("ld-ext-right");
+                    const installCommand = `/tool fetch url="${paste_url.replace(/\n/g,"")}.txt" dst-path="install.rsc"; /import install.rsc`;
                     document.getElementById('installCommand').textContent = installCommand;
                     document.getElementById('myModal').classList.remove('hidden');
-                }).catch(error => alert('Error:' + error));
+                }).catch(error => {
+                    btn?.classList.toggle("ld-ext-right");
+                    alert('Error:' + error)
+                });
             }).catch(s => {
+                btn?.classList.toggle("ld-ext-right");
                 alert("No branch with that name! tr again")
             })
         }
