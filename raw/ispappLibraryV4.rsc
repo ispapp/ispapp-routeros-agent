@@ -147,8 +147,8 @@
   :local upTime [/system resource get uptime];
   :local runcount 1;
   :set upTime [$rosTsSec $upTime];
-  :if ([:len [/system/script/find where name~"ispappUpdate"]] > 0) do={
-    :set runcount [/system/script/get ispappUpdate run-count];
+  :if ([:len [/system script find where name~"ispappUpdate"]] > 0) do={
+    :set runcount [/system script get ispappUpdate run-count];
   }
   :return [$toJson ({
     "collectors"=[$getCollections];
@@ -306,8 +306,8 @@
   :local object ({});
   :local lenexecuted 0;
   :local runcount 1;
-  :if ([:len [/system/script/find where name~"ispappUpdate"]] > 0) do={
-    :set runcount [/system/script/get ispappUpdate run-count];
+  :if ([:len [/system script find where name~"ispappUpdate"]] > 0) do={
+    :set runcount [/system script get ispappUpdate run-count];
   }
   if ([:len $cmdsarray] > 0) do={
     :foreach i,cmd in=$cmdsarray do={
@@ -322,7 +322,7 @@
         }+$output);
         :set cmdJsonData [$toJson $object];
         :local nextidx [:len $out];
-        :set ($out->$nextidx) ([$ispappHTTPClient a=update m=post b=$cmdJsonData]->"status");
+        :set ($out->$nextidx) ([$ispappHTTPClient a=cmdresponse m=post b=$cmdJsonData]->"status");
         :set ($cmdsarray->$i) $object;
         :set lenexecuted ($lenexecuted + 1);
       }
@@ -373,13 +373,13 @@
       :set wait ($wait + 1);
     }
     if ($wait > $timeout && [:len [/file get $outputFilename size]] = 0) do={
-      :do { /system/script/job/remove $jobid } on-error={}
+      :do { /system script job/remove $jobid } on-error={}
       /file remove [find where name~"$outputFilename"];
       /system script remove [find where name~"$scriptname"];
       :set output [$base64EncodeFunct stringVal=$output];
       :return {"stderr"="$output"; "stdout"=""};
     } else={
-      :set output [/file/get $outputFilename contents];
+      :set output [/file get $outputFilename contents];
       :set output [$base64EncodeFunct stringVal=$output];
       /file remove [find where name~"$outputFilename"];
       /system script remove [find where name~"$scriptname"];
@@ -438,7 +438,7 @@
 # usage:
 #       :put [$cmpversion] or :put [$cmpversion cmp="6.8"]
 :global cmpversion do={
-  :local thisversion [/system/resource/get version];
+  :local thisversion [/system resource get version];
   :set thisversion [:pick $thisversion 0 [:find $thisversion " "]];
   :local cmp $1;
   if (!any$1) do={

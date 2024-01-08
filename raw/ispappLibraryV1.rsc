@@ -47,7 +47,7 @@
     :global getAllConfigs;
     :global joinArray;
     :global ispappHTTPClient;
-    if ([:len [/system/script/job find script~"ispappUpdate"]] > 0) do={
+    if ([:len [/system script job find script~"ispappUpdate"]] > 0) do={
         :return {"status"=false; "message"="waiting update to finish first!"};
     }
     :local getConfig do={
@@ -104,7 +104,7 @@
             :local wirelessConfigs;
             foreach i,k in=$wlans do={
                 :local temp [[:parse "/interface/wireless print proplist=ssid,security-profile as-value where .id=$k"]];
-                :local cmdsectemp [:parse "/interface/wireless/security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=\$1"];
+                :local cmdsectemp [:parse "/interface wireless security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=\$1"];
                 :local secTemp [$cmdsectemp ($temp->0->"security-profile")];
                 :local thisWirelessConfig {
                   "encKey"=[$getEncKey ($secTemp->0)];
@@ -142,8 +142,8 @@
                 :local key ($1->"encKey");
                 # search for profile with this same password if exist if not just create it.
                 :local currentProfilesAtPassword do={
-                    :local currentprfwpa2 [:parse "/interface/wireless/security-profiles/print as-value where wpa2-pre-shared-key=\$1"];
-                    :local currentprfwpa [:parse "/interface/wireless/security-profiles/print as-value where wpa-pre-shared-key=\$1"];
+                    :local currentprfwpa2 [:parse "/interface wireless security-profiles print as-value where wpa2-pre-shared-key=\$1"];
+                    :local currentprfwpa [:parse "/interface wireless security-profiles print as-value where wpa-pre-shared-key=\$1"];
                     :local secpp2 [$currentprfwpa2 $1];
                     :local secpp [$currentprfwpa $1];
                     :if ([:len $secpp2] > 0) do={
@@ -170,22 +170,22 @@
             } on-error={
                 # return the default dec profile in case of error
                 # adding or updating to perform interface setup with no problems
-                :return [[:parse "/interface/wireless/security-profiles/get *0 name"]];
+                :return [[:parse "/interface wireless security-profiles get *0 name"]];
             }
         }
         :global convertToValidFormat;
         ## start comparing local and remote configs
         foreach conf in=$wirelessConfigs do={
             :log info "## start comparing local and remote configs ##";
-            :local finditf [:parse "/interface/wireless/find ssid=\$1"];
+            :local finditf [:parse "/interface wireless find ssid=\$1"];
             :local existedinterf [$finditf ($conf->"ssid")];
             :local newSecProfile [$SyncSecProfile $conf];
             if ([:len $existedinterf] = 0) do={
                 # add new interface
                 :local NewInterName ("ispapp_" . [$convertToValidFormat ($conf->"ssid")]);
-                :local masterinterface [[:parse "/interface/wireless/get ([/interface/wireless/find]->0) name"]];
+                :local masterinterface [[:parse "/interface wireless get ([/interface wireless find]->0) name"]];
                 :log info "## add new interface -> $NewInterName ##";
-                :local addInter [:parse "/interface/wireless/add \\
+                :local addInter [:parse "/interface wireless add \\
                     ssid=(\$1->\"ssid\") \\
                     wireless-protocol=802.11 frequency=auto mode=ap-bridge hide-ssid=no comment=ispapp \\
                     security-profile=(\$1->\"newSecProfile\") \\
@@ -197,7 +197,7 @@
                 :delay 3s; # wait for interface to be created
                 :log info "## wait for interface to be created 3s ##";
             } else={
-                :local setInter [:parse "/interface/wireless/set \$2 \\
+                :local setInter [:parse "/interface wireless set \$2 \\
                     ssid=(\$1->\"ssid\") \\
                     wireless-protocol=802.11 frequency=auto mode=ap-bridge hide-ssid=no comment=ispapp \\
                     security-profile=(\$1->\"newSecProfile\") \\
@@ -214,7 +214,7 @@
                     # remove all interfaces except the first one
                     :foreach k,intfid in=$existedinterf do={
                         if ($k != 0) do={
-                            [[:parse "/interface/wireless/remove [/interface/wireless/get $intfid name]"]];
+                            [[:parse "/interface wireless remove [/interface wireless get $intfid name]"]];
                             :delay 1s; # wait for interface to be removed
                         }
                     }
@@ -235,18 +235,18 @@
         :log info "## wait for interfaces changes to be applied and can be retrieved from the device 5s ##";
         :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
         :local InterfaceslocalConfigs;
-        :local getkeytypes  [:parse "/interface/wireless/security-profiles/get [/interface/wireless/get \$1 security-profile] authentication-types"];
-        :foreach k,interfaceid in=[[:parse "/interface/wireless/find"]] do={
-            :local interfaceProps [[:parse "/interface/wireless/get $interfaceid"]];
+        :local getkeytypes  [:parse "/interface wireless security-profiles get [/interface wireless get \$1 security-profile] authentication-types"];
+        :foreach k,interfaceid in=[[:parse "/interface wireless find"]] do={
+            :local interfaceProps [[:parse "/interface wireless get $interfaceid"]];
             :set ($InterfaceslocalConfigs->$k) {
-                "if"=([[:parse "/interface/wireless/get $interfaceid name"]]);
-                "key"=([[:parse "/interface/wireless/security-profile get [/interface/wireless/get $interfaceid security-profile] wpa2-pre-shared-key"]]);
+                "if"=([[:parse "/interface wireless get $interfaceid name"]]);
+                "key"=([[:parse "/interface wireless security-profile get [/interface wireless get $interfaceid security-profile] wpa2-pre-shared-key"]]);
                 "technology"="wireless";
             };
         };
         :local SecProfileslocalConfigs; 
-        :foreach k,secid in=[[:parse "/interface/wireless/security-profile find"]] do={
-            :local secProf [[:parse "/interface/wireless/security-profile get $secid"]];
+        :foreach k,secid in=[[:parse "/interface wireless security-profile find"]] do={
+            :local secProf [[:parse "/interface wireless security-profile get $secid"]];
             :local authtypes ($secProf->"authentication-types");
             :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
             :set ($SecProfileslocalConfigs->$k) {
@@ -303,7 +303,7 @@
             :return false;
         }
     };
-    :local certs [/certificate/find where name~"ispapp" trusted=yes];
+    :local certs [/certificate find where name~"ispapp" trusted=yes];
     if ([:len $certs] > 0) do={
         :return {
             "ntpStatus"=true;
@@ -323,7 +323,7 @@
             # Configure a new NTP client
             :put "adding ntp servers to /system ntp client \n";
             /system ntp client set enabled=yes mode=unicast servers=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com
-            /system/ntp/client/reset-freq-drift 
+            /system ntp client reset-freq-drift 
             :delay 2s;
             :set ntpStatus true;
             :local retry 0;

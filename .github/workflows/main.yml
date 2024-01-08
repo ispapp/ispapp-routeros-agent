@@ -3,7 +3,7 @@ name: Update ispappLibrary.rsc
 on:
   push:
     branches:
-      - karim
+      - merge-to-karim
 
 jobs:
   update_scripts:
