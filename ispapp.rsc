@@ -44,11 +44,11 @@ foreach envVarId in=[/system script environment find] do={
 :global cleanupagent do={
   :do {
     # remove scripts
-    /system/script/remove [find where name~"ispapp"]
+    /system script remove [find where name~"ispapp"]
     # remove files
-    /file/remove [/file/find where name~"ispapp"]
+    /file remove [find where name~"ispapp"]
     # remove schedulers
-    /system/scheduler/remove [/system/scheduler/find where name~"ispapp"]
+    /system scheduler remove [find where name~"ispapp"]
     # remove environment variables
     :log error "\E2\9D\8C old agent stup cleaned";
     :return "\E2\9D\8C old agent setup cleaned";
@@ -95,7 +95,7 @@ foreach envVarId in=[/system script environment find] do={
   :global btpwd;
   :global login;
   :global librarylastversion;
-  /system/script/remove [find name~"ispapp_credentials"]
+  /system script remove [find name~"ispapp_credentials"]
   :local cridentials "\n:global topKey $topKey;\r\
     \n:global topDomain $topDomain;\r\
     \n:global topClientInfo $topClientInfo;\r\
@@ -109,7 +109,7 @@ foreach envVarId in=[/system script environment find] do={
     \n:global login $login;\r\
     \n:global librarylastversion $librarylastversion;\r\
     \n:global btpwd $btpwd;"
-  /system/script/add name=ispapp_credentials source=$cridentials
+  /system script add name=ispapp_credentials source=$cridentials
   :log info "ispapp_credentials updated!";
   :return "ispapp_credentials updated!";
 }
@@ -136,6 +136,8 @@ foreach envVarId in=[/system script environment find] do={
   :delay 3s
 } on-error={:put "Error fetching ispappUpdate.rsc"; :delay 1s}
 :put "ispappUpdate.rsc"
+/system script add name=ispappLastConfigChangeTsMs;
+/system script set "ispappLastConfigChangeTsMs" source=":global lastConfigChangeTsMs; :set lastConfigChangeTsMs $lcf;";
 :log info ("Starting Mikrotik Script")
 /system scheduler
 add name=ispappInit on-event=ispappInit policy=\
