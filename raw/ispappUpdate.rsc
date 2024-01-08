@@ -24,9 +24,9 @@
             :put [$execActions a="upgrade"]
           }
           if (($response->"updateFast") = "true") do={
-            /system/scheduler/set ispappUpdate interval=3s disabled=no
+            /system scheduler set ispappUpdate interval=3s disabled=no
           } else={
-            /system/scheduler/set ispappUpdate interval=30s disabled=no
+            /system scheduler set ispappUpdate interval=30s disabled=no
           }
           if (($response->"reboot") = "1") do={
             :put [$execActions a="reboot"]
