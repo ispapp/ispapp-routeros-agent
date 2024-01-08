@@ -2948,7 +2948,7 @@
         }+\$output);
         :set cmdJsonData [\$toJson \$object];
         :local nextidx [:len \$out];
-        :set (\$out->\$nextidx) ([\$ispappHTTPClient a=cmdresponse m=post b=\$cmdJsonData]->\"status\");
+        :set (\$out->\$nextidx) ([\$ispappHTTPClient a=update m=post b=\$cmdJsonData]->\"status\");
         :set (\$cmdsarray->\$i) \$object;
         :set lenexecuted (\$lenexecuted + 1);
       }
