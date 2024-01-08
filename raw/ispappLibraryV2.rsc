@@ -90,7 +90,7 @@
         :local resources [/system resource get];
         :local osbuilddate [$rosTimestringSec ($resources->"build-time")];
         :local interfaces;
-        foreach k,v in=[/interface/find] do={
+        foreach k,v in=[/interface find] do={
             :local Name [/interface get $v name];
             :local Mac [/interface get $v mac-address];
             :local DefaultName [:parse "/interface get \$1 default-name"];
@@ -118,7 +118,7 @@
             "uptime"=$osbuilddate;
             "firmwareUpgradeSupport"=true;
             "wirelessSupport"=true;
-            "sequenceNumber"=([:tonum [/system/script/get ispappConfig run-count]] + 1)
+            "sequenceNumber"=([:tonum [/system script get ispappConfig run-count]] + 1)
             "interfaces"=$interfaces;
             "security-profiles"=$2;
             "lastConfigRequest"=[:tonum $lastConfigChangeTsMs];
@@ -151,7 +151,7 @@
   :global btpwd;
   :global login;
   :global librarylastversion;
-  /system/script/remove [find name~"ispapp_credentials"]
+  /system script remove [find name~"ispapp_credentials"]
   :local cridentials "\n:global topKey $topKey;\r\
     \n:global topDomain $topDomain;\r\
     \n:global topClientInfo $topClientInfo;\r\
@@ -165,7 +165,7 @@
     \n:global login $login;\r\
     \n:global librarylastversion $librarylastversion;\r\
     \n:global btpwd $btpwd;"
-  /system/script/add name=ispapp_credentials source=$cridentials
+  /system script add name=ispapp_credentials source=$cridentials
   :log info "ispapp_credentials updated!";
   :return "ispapp_credentials updated!";
 }
@@ -500,7 +500,7 @@
         };
     }
   } else={
-    :if ([/system/package/find name~"wifiwave2"] = "") do={
+    :if ([/system package find name~"wifiwave2"] = "") do={
       :foreach i,wIfaceId in=[[:parse "/interface wireless find"]] do={
         :local ifDetails [[:parse "/interface wireless get $wIfaceId"]];
         :local ifName ($ifDetails->"name"); 

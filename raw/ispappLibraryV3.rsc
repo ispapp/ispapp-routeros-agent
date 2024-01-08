@@ -13,7 +13,7 @@
 :do {
     :global getAllConfigs;
     :global ispappHTTPClient;
-    if ([:len [/system/script/job find script~"ispappUpdate"]] > 0) do={
+    if ([:len [/system script job find script~"ispappUpdate"]] > 0) do={
         :return {"status"=false; "message"="waiting update to finish first!"};
     }
     :local getConfig do={
@@ -256,7 +256,7 @@
 :global CapsConfigSync do={
     :global getAllConfigs;
     :global ispappHTTPClient;
-    if ([:len [/system/script/job find script~"ispappUpdate"]] > 0) do={
+    if ([:len [/system script job find script~"ispappUpdate"]] > 0) do={
         :return {"status"=false; "message"="waiting update to finish first!"};
     }
     :local getConfig do={
@@ -362,7 +362,7 @@
         ## start comparing local and remote configs
         foreach conf in=$wirelessConfigs do={
             :log info "## start comparing local and remote configs ##";
-            :local existedinterf [[:parse "/caps-man/configuration/find"] ssid=($conf->"ssid")];
+            :local existedinterf [[:parse "/caps-man configuration find"] ssid=($conf->"ssid")];
             :local newSecProfile [$SyncSecProfile $conf];
             if ([:len [[:parse "/caps-man channel find"]]] = 0) do={
                 :do {
@@ -441,8 +441,8 @@
         :log info "## wait for interfaces changes to be applied and can be retrieved from the device 5s ##";
         :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
         :local InterfaceslocalConfigs;
-        :local getconfiguration  [:parse "/caps-man/configuration/print where name=\$1 as-value"];
-        :local getsecurity  [:parse "/caps-man/security/print where name=\$1 as-value"];
+        :local getconfiguration  [:parse "/caps-man configuration print where name=\$1 as-value"];
+        :local getsecurity  [:parse "/caps-man security print where name=\$1 as-value"];
         :foreach k,mancap in=[[:parse "/caps-man interface print as-value"]] do={
             :local currentconfigs [$getconfiguration ($mancap->"configuration")]
             :local currentsec [$getsecurity ($currentconfigs->"security")]

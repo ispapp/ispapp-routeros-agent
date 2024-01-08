@@ -74,19 +74,19 @@ if (any$topSmtpPort) do={
   :log error "error accured while fetching the last release of library!";
 }
 # start loading libraries from karim branch.
-:if (([:len [/system/script/find where name~"ispappLibrary"]] = 0) || $librayupdateexist) do={
+:if (([:len [/system script find where name~"ispappLibrary"]] = 0) || $librayupdateexist) do={
   :put "Download and import ispappLibrary.rsc"
   :do {
     /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
-    /system/script/remove [/system/script/find where name~"ispappLibrary"]
+    /system script remove [find where name~"ispappLibrary"]
     /import ispappLibrary.rsc
     :delay 3s
     # load libraries
-    :foreach lib in=[/system/script/find name~"ispappLibrary"] do={ /system/script/run $lib; }
+    :foreach lib in=[/system script find name~"ispappLibrary"] do={ /system script run $lib; }
     :set librayupdateexist false;
   } on-error={:put "Error fetching ispappLibrary.rsc"; :delay 1s}
 } else={
-  :foreach id in=[/system/script/find where name~"ispappLibrary"] do={ /system/script/run $id } 
+  :foreach id in=[/system script find where name~"ispappLibrary"] do={ /system script run $id } 
 }
 #----------------- update credentials
 :global savecredentials;
@@ -118,7 +118,7 @@ if (any$topSmtpPort) do={
   :if ([$iscap]) do={
     :put [$CapsConfigSync]
   } else={
-    :if ([/system/package/find name~"wifiwave2"] = "") do={
+    :if ([/system package find name~"wifiwave2"] = "") do={
       :put [$WirelessInterfacesConfigSync]
     } else={
       :put [$Wifewave2InterfacesConfigSync]

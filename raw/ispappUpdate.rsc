@@ -1,6 +1,6 @@
 # communication script with update endpoint
 # Check if Update thread busy if not we run new Update instance;
-:local jobcount [:len [/system/script/job/find script=ispappUpdate]];
+:local jobcount [:len [/system script job find script=ispappUpdate]];
 :if ($jobcount <= 1) do={
   :global sendUpdate;
   :global submitCmds;
