@@ -1,7 +1,7 @@
 /system script add dont-require-permissions=yes name=ispappUpdate owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
 # communication script with update endpoint
 # Check if Update thread busy if not we run new Update instance;
-:local jobcount [:len [/system/script/job/find script=ispappUpdate]];
+:local jobcount [:len [/system script job find script=ispappUpdate]];
 :if (\$jobcount <= 1) do={
   :global sendUpdate;
   :global submitCmds;
