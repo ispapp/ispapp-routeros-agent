@@ -119,19 +119,19 @@ foreach envVarId in=[/system script environment find] do={
 # start installing rsc files from repos.
 :put "ispappConfig.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappConfig.rsc" dst-path="ispappConfig.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/merge-to-karim/ispappConfig.rsc" dst-path="ispappConfig.rsc"
   /import ispappConfig.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappConfig.rsc"; :delay 1s}
 :put "Download and import ispappInit.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappInit.rsc" dst-path="ispappInit.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/merge-to-karim/ispappInit.rsc" dst-path="ispappInit.rsc"
   /import ispappInit.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappInit.rsc"; :delay 1s}
 :put "ispappUpdate.rsc"
 :do {
-  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappUpdate.rsc" dst-path="ispappUpdate.rsc"
+  /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/merge-to-karim/ispappUpdate.rsc" dst-path="ispappUpdate.rsc"
   /import ispappUpdate.rsc
   :delay 3s
 } on-error={:put "Error fetching ispappUpdate.rsc"; :delay 1s}
