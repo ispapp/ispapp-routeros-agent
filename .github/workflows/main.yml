@@ -32,6 +32,6 @@ jobs:
           ispappLibrary.rsc
           ispappUpdate.rsc
           ispappInit.rsc
-        branch: karim
+        branch: merge-to-karim
         commit-msg: ispapp agent scripts updated ${{ github.event.head_commit.message }}
         github-token: ${{ secrets.ISPAPPTOKEN }}
