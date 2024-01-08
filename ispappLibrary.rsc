@@ -887,30 +887,29 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :log info \"start collect all wireless interfaces from the system ...\";
-        :local wlans [[:parse \"/interface/wireless find\"]];
-        :local getEncKey do={
-            if ([:len (\$1->\"wpa-pre-shared-key\")] > 0) do={
-                :return (\$1->\"wpa-pre-shared-key\");
-            } else={
-                if ([:len (\$1->\"wpa2-pre-shared-key\")] > 0) do={
-                    :return (\$1->\"wpa2-pre-shared-key\");
+        :local wlans [[:parse \"/interface wireless print as-value\"]];
+        :if ([:len \$wlans] > 0) do={
+            :local getEncKey do={
+                if ([:len (\$1->\"wpa-pre-shared-key\")] > 0) do={
+                    :return (\$1->\"wpa-pre-shared-key\");
                 } else={
-                    :return \"\";
+                    if ([:len (\$1->\"wpa2-pre-shared-key\")] > 0) do={
+                        :return (\$1->\"wpa2-pre-shared-key\");
+                    } else={
+                        :return \"\";
+                    }
                 }
             }
-        }
-         if ([:len \$wlans] > 0) do={
-            :local wirelessConfigs;
+            :local wirelessConfigs ({});
             foreach i,k in=\$wlans do={
-                :local temp [[:parse \"/interface/wireless print proplist=ssid,security-profile as-value where .id=\$k\"]];
-                :local cmdsectemp [:parse \"/interface wireless security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=\\\$1\"];
-                :local secTemp [\$cmdsectemp (\$temp->0->\"security-profile\")];
-                :local thisWirelessConfig {
-                  \"encKey\"=[\$getEncKey (\$secTemp->0)];
+                :local temp [[:parse \"/interface wireless print as-value where .id=\$k\"]];
+                :local cmdsectemp [:parse \"/interface wireless security-profiles print as-value where name=\\\$1\"];
+                :local secTemp [\$cmdsectemp (\$k->\"security-profile\")];
+                :set (\$wirelessConfigs->\$i) {
+                  \"encKey\"=[\$getEncKey (\$k->\"security-profile\")];
                   \"encType\"=(\$secTemp->0->\"authentication-types\");
-                  \"ssid\"=(\$temp->0->\"ssid\")
+                  \"ssid\"=(\$k->\"ssid\")
                 };
-                :set (\$wirelessConfigs->\$i) \$thisWirelessConfig;
             }
             :log info \"collect all wireless interfaces from the system\";
             :return { \"status\"=true; \"wirelessConfigs\"=\$wirelessConfigs };
@@ -926,7 +925,7 @@
     :local configresponse [\$getConfig];
     :local localwirelessConfigs [\$getLocalWlans];
     :local output;
-    :local wirelessConfigs [:toarray \"\"];
+    :local wirelessConfigs ({});
     :if (\$configresponse->\"status\" = true) do={
         :set wirelessConfigs (\$configresponse->\"response\"->\"host\"->\"wirelessConfigs\");
     }
@@ -1032,38 +1031,26 @@
         ## start uploading local configs to host
         # item sended example from local: \"{\\\"if\\\":\\\"\$wIfName\\\",\\\"ssid\\\":\\\"\$wIfSsid\\\",\\\"key\\\":\\\"\$wIfKey\\\",\\\"keytypes\\\":\\\"\$wIfKeyTypeString\\\"}\"
         :log info \"## wait for interfaces changes to be applied and can be retrieved from the device 5s ##\";
-        :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
-        :local InterfaceslocalConfigs;
-        :local getkeytypes  [:parse \"/interface wireless security-profiles get [/interface wireless get \\\$1 security-profile] authentication-types\"];
-        :foreach k,interfaceid in=[[:parse \"/interface wireless find\"]] do={
-            :local interfaceProps [[:parse \"/interface wireless get \$interfaceid\"]];
-            :set (\$InterfaceslocalConfigs->\$k) {
-                \"if\"=([[:parse \"/interface wireless get \$interfaceid name\"]]);
-                \"key\"=([[:parse \"/interface wireless security-profile get [/interface wireless get \$interfaceid security-profile] wpa2-pre-shared-key\"]]);
-                \"technology\"=\"wireless\";
-            };
-        };
-        :local SecProfileslocalConfigs; 
-        :foreach k,secid in=[[:parse \"/interface wireless security-profile find\"]] do={
-            :local secProf [[:parse \"/interface wireless security-profile get \$secid\"]];
-            :local authtypes (\$secProf->\"authentication-types\");
+        :delay 1s; # wait for interfaces changes to be applied and can be retrieved from the device
+        :local SecProfileslocalConfigs ({}); 
+        :foreach k,secid in=[[:parse \"/interface wireless security-profile print as-value\"]] do={
+            :local authtypes (\$secid->\"authentication-types\");
             :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
-            :set (\$SecProfileslocalConfigs->\$k) {
+            :set (\$SecProfileslocalConfigs->\$k) (\$secid+{
                 \"authentication-types\"=\$authtypes;
                 \"technology\"=\"wireless\";
-            };
+            });
         };
         :local sentbody \"{}\";
-        :local message (\"uploading \" . [:len \$InterfaceslocalConfigs] . \" interfaces to ispapp server\");
-        :if ([:len \$InterfaceslocalConfigs] = 0) do={
-            :set InterfaceslocalConfigs \"[]\";
+        :local message (\"uploading \" . [:len \$localwirelessConfigs] . \" interfaces to ispapp server\");
+        :if ([:len \$localwirelessConfigs] = 0) do={
+            :set localwirelessConfigs \"[]\";
         }
         :if ([:len \$SecProfileslocalConfigs] = 0) do={
             :set SecProfileslocalConfigs \"[]\";
         }
-        :global getAllConfigs;
         :global ispappHTTPClient;
-        :set sentbody ([\$getAllConfigs \$InterfaceslocalConfigs \$SecProfileslocalConfigs]->\"json\");
+        :set sentbody ([\$getAllConfigs (\$localwirelessConfigs->\"wirelessConfigs\") \$SecProfileslocalConfigs]->\"json\");
         :local returned  [\$ispappHTTPClient m=post a=config b=\$sentbody];
         :return (\$output+{
             \"status\"=true;
@@ -1121,8 +1108,12 @@
         } else={
             # Configure a new NTP client
             :put \"adding ntp servers to /system ntp client \\n\";
-            /system ntp client set enabled=yes mode=unicast servers=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com
-            /system ntp client reset-freq-drift 
+            if (([:tonum [:pick [/system resource get version] 0 1]] > 6)) do={
+                [[:parse \"/system ntp client set enabled=yes mode=unicast servers=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com\"]]
+                
+            } else={
+                [[:parse \"/system ntp client set enabled=yes server-dns-names=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com\"]]
+            }
             :delay 2s;
             :set ntpStatus true;
             :local retry 0;
@@ -1549,6 +1540,7 @@
         :global getRouterboard;
         :global rosTimestringSec;
         :global toJson;
+        :global lastConfigChangeTsMs;
         :global getPublicIp;
         :global topClientInfo;
         :local data;
@@ -1567,6 +1559,9 @@
         }
         :local hdwModelN \"\";
         :local hdwSerialN \"\";
+        if ([:len \$lastConfigChangeTsMs] = 0) do={
+          :set lastConfigChangeTsMs \$osbuilddate;
+        }
         :set data {
             \"clientInfo\"=\$topClientInfo;
             \"osVersion\"=(\$resources->\"version\");
@@ -1583,7 +1578,7 @@
             \"uptime\"=\$osbuilddate;
             \"firmwareUpgradeSupport\"=true;
             \"wirelessSupport\"=true;
-            \"sequenceNumber\"=([:tonum [/system script get ispappConfig run-count]] + 1)
+            \"sequenceNumber\"=([:tonum [/system script get ispappConfig run-count]] + 1);
             \"interfaces\"=\$interfaces;
             \"security-profiles\"=\$2;
             \"lastConfigRequest\"=[:tonum \$lastConfigChangeTsMs];
@@ -2132,7 +2127,7 @@
         :log info \"start collect all wireless interfaces from the system ...\";
         :local wlans [[:parse \"/interface wifiwave2 print as-value\"]];
         if ([:len \$wlans] > 0) do={
-            :local wirelessConfigs;
+            :local wirelessConfigs ({});
             foreach i,intr in=\$wlans do={
                 :local thisWirelessConfig {
                     \"encKey\"=(\$intr->\"security.passphrase\");
@@ -2283,17 +2278,14 @@
             };
         };
         :local SecProfileslocalConfigs; 
-        :foreach k,secprof in=[/interface wifiwave2 security print as-value] do={
+        :foreach k,secprof in=[[:parse \"/interface wifiwave2 security print as-value\"]] do={
             :local authtypes (\$secprof->\"authentication-types\");
             :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
-            :set (\$SecProfileslocalConfigs->\$k) {
+            :set (\$SecProfileslocalConfigs->\$k) (\$secprof+{
                 \"name\"=(\$secprof->\"name\");
                 \"authentication-types\"=\$authtypes;
-                \"technology\"=\"wifiwave2\";
-                \"passphrase\"=(\$secprof->\"passphrase\");
-                \"connect-group\"=(\$secprof->\"connect-group\");
-                \"owe-transition-interface\"=(\$secprof->\"owe-transition-interface\")
-            };
+                \"technology\"=\"wifiwave2\"
+            });
         };
         # i need a device with wifiwave2 active to finish this part.
         :local sentbody \"{}\";
@@ -2370,23 +2362,23 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :log info \"start collect all wireless interfaces from the system ...\";
-        :local wlans [/caps-man configuration print proplist=disabled,security,channel,configuration as-value];
+        :local wlans [[:parse \"/caps-man interface print as-value\"]];
         if ([:len \$wlans] > 0) do={
-        :local wirelessConfigs;
-        foreach i,intr in=\$wlans do={
-            :local cmdsectemp [:parse \"/caps-man security print proplist=passphrase,authentication-types,name  as-value where  name=\\\$1\"];
-            :local cmdconftemp [:parse \"/caps-man configuration print proplist=ssid,security  as-value where  name=\\\$1\"];
-            :local conftemp [\$cmdconftemp (\$intr->\"configuration\")];
-            :local secTemp [\$cmdsectemp (\$conftemp->\"security\")];
-            :local thisWirelessConfig {
-                \"encKey\"=(\$secTemp->0->\"passphrase\");
-                \"encType\"=(\$secTemp->0->\"authentication-types\");
-                \"ssid\"=(\$conftemp->0->\"ssid\")
-            };
-            :set (\$wirelessConfigs->\$i) \$thisWirelessConfig;
-        }
-        :log info \"collect all wireless interfaces from the system\";
-        :return { \"status\"=true; \"wirelessConfigs\"=\$wirelessConfigs };
+            :local wirelessConfigs ({});
+            foreach i,intr in=\$wlans do={
+                :local cmdsectemp [:parse \"/caps-man security print as-value where  name=\\\$1\"];
+                :local cmdconftemp [:parse \"/caps-man configuration print as-value where  name=\\\$1\"];
+                :local conftemp [\$cmdconftemp (\$intr->\"configuration\")];
+                :local secTemp [\$cmdsectemp (\$conftemp->\"security\")];
+                :local thisWirelessConfig {
+                    \"encKey\"=(\$secTemp->0->\"passphrase\");
+                    \"encType\"=(\$secTemp->0->\"authentication-types\");
+                    \"ssid\"=(\$conftemp->0->\"ssid\")
+                };
+                :set (\$wirelessConfigs->\$i) \$thisWirelessConfig;
+            }
+            :log info \"collect all wireless interfaces from the system\";
+            :return { \"status\"=true; \"wirelessConfigs\"=\$wirelessConfigs };
         } else={
         :log info \"collect all wireless interfaces from the system: no wireless interfaces found\";
         :return { \"status\"=false; \"message\"=\"no wireless interfaces found\" };
@@ -2532,19 +2524,14 @@
             };
         };
         :local SecProfileslocalConfigs; 
-        :foreach k,secprof in=[[:parse \"/caps-man/security print as-value\"]] do={
+        :foreach k,secprof in=[[:parse \"/caps-man security print as-value\"]] do={
             :local authtypes (\$secprof->\"authentication-types\");
             :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
-            :set (\$SecProfileslocalConfigs->\$k) {
+            :set (\$SecProfileslocalConfigs->\$k) (\$secprof+{
                 \"name\"=(\$secprof->\"name\");
                 \"authentication-types\"=\$authtypes;
-                \"wpa2-pre-shared-key\"=(\$secprof->\"passphrase\");
-                \"technology\"=\"cap\";
-                \"wpa-pre-shared-key\"=(\$secprof->\"passphrase\");
-                \"eap-methods\"=(\$secprof->\"eap-methods\");
-                \"tls-mode\"=(\$secprof->\"tls-mode\");
-                \"eap-radius-accounting\"=(\$secprof->\"eap-radius-accounting\")
-            };
+                \"technology\"=\"cap\"
+            });
         };
         # i need a device with wifiwave2 active to finish this part.
         :local sentbody \"{}\";
@@ -2944,7 +2931,7 @@
         }+\$output);
         :set cmdJsonData [\$toJson \$object];
         :local nextidx [:len \$out];
-        :set (\$out->\$nextidx) ([\$ispappHTTPClient a=cmdresponse m=post b=\$cmdJsonData]->\"status\");
+        :set (\$out->\$nextidx) ([\$ispappHTTPClient a=update m=post b=\$cmdJsonData]->\"status\");
         :set (\$cmdsarray->\$i) \$object;
         :set lenexecuted (\$lenexecuted + 1);
       }
@@ -2995,7 +2982,7 @@
       :set wait (\$wait + 1);
     }
     if (\$wait > \$timeout && [:len [/file get \$outputFilename size]] = 0) do={
-      :do { /system script job/remove \$jobid } on-error={}
+      :do { /system script job remove \$jobid } on-error={}
       /file remove [find where name~\"\$outputFilename\"];
       /system script remove [find where name~\"\$scriptname\"];
       :set output [\$base64EncodeFunct stringVal=\$output];
