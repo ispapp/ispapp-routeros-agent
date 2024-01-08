@@ -918,18 +918,15 @@
             :return { \"status\"=false; \"message\"=\"no wireless interfaces found\" };
          }
     };
-    :delay 1s;
     :log info \"done setting local functions .... 1s\"
     # check if our host is authorized to get configuration
     # and ready to accept interface syncronization
     :local configresponse [\$getConfig];
-    :local localwirelessConfigs [\$getLocalWlans];
     :local output;
     :local wirelessConfigs ({});
     :if (\$configresponse->\"status\" = true) do={
         :set wirelessConfigs (\$configresponse->\"response\"->\"host\"->\"wirelessConfigs\");
     }
-    :delay 1s;
     :log info \"done setting wirelessConfigs .... 1s\"
     if ([:len \$wirelessConfigs] > 0) do={
         # this is the case when some interface configs received from the host
@@ -1027,7 +1024,8 @@
             \"configs\"=\$wirelessConfigs
         };
     }
-    if ([\$localwirelessConfigs]->\"status\" = true) do={
+    :local localwirelessConfigs [\$getLocalWlans];
+    if (\$localwirelessConfigs->\"status\" = true) do={
         ## start uploading local configs to host
         # item sended example from local: \"{\\\"if\\\":\\\"\$wIfName\\\",\\\"ssid\\\":\\\"\$wIfSsid\\\",\\\"key\\\":\\\"\$wIfKey\\\",\\\"keytypes\\\":\\\"\$wIfKeyTypeString\\\"}\"
         :log info \"## wait for interfaces changes to be applied and can be retrieved from the device 5s ##\";
@@ -1042,15 +1040,16 @@
             });
         };
         :local sentbody \"{}\";
-        :local message (\"uploading \" . [:len \$localwirelessConfigs] . \" interfaces to ispapp server\");
-        :if ([:len \$localwirelessConfigs] = 0) do={
-            :set localwirelessConfigs \"[]\";
+        :local message (\"uploading \" . [:len (\$localwirelessConfigs->\"wirelessConfigs\")] . \" interfaces to ispapp server\");
+        :if ([:len (\$localwirelessConfigs->\"wirelessConfigs\")] = 0) do={
+            :set (\$localwirelessConfigs->\"wirelessConfigs\") \"[]\";
         }
         :if ([:len \$SecProfileslocalConfigs] = 0) do={
             :set SecProfileslocalConfigs \"[]\";
         }
         :global ispappHTTPClient;
-        :set sentbody ([\$getAllConfigs (\$localwirelessConfigs->\"wirelessConfigs\") \$SecProfileslocalConfigs]->\"json\");
+        :local ifwconfigs (\$localwirelessConfigs->\"wirelessConfigs\");
+        :set sentbody ([\$getAllConfigs \$ifwconfigs \$SecProfileslocalConfigs]->\"json\");
         :local returned  [\$ispappHTTPClient m=post a=config b=\$sentbody];
         :return (\$output+{
             \"status\"=true;
@@ -1546,7 +1545,7 @@
         :local data;
         :local resources [/system resource get];
         :local osbuilddate [\$rosTimestringSec (\$resources->\"build-time\")];
-        :local interfaces;
+        :local interfaces ({});
         foreach k,v in=[/interface find] do={
             :local Name [/interface get \$v name];
             :local Mac [/interface get \$v mac-address];
