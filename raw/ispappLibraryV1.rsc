@@ -88,30 +88,29 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :log info "start collect all wireless interfaces from the system ...";
-        :local wlans [[:parse "/interface/wireless find"]];
-        :local getEncKey do={
-            if ([:len ($1->"wpa-pre-shared-key")] > 0) do={
-                :return ($1->"wpa-pre-shared-key");
-            } else={
-                if ([:len ($1->"wpa2-pre-shared-key")] > 0) do={
-                    :return ($1->"wpa2-pre-shared-key");
+        :local wlans [[:parse "/interface wireless print as-value"]];
+        :if ([:len $wlans] > 0) do={
+            :local getEncKey do={
+                if ([:len ($1->"wpa-pre-shared-key")] > 0) do={
+                    :return ($1->"wpa-pre-shared-key");
                 } else={
-                    :return "";
+                    if ([:len ($1->"wpa2-pre-shared-key")] > 0) do={
+                        :return ($1->"wpa2-pre-shared-key");
+                    } else={
+                        :return "";
+                    }
                 }
             }
-        }
-         if ([:len $wlans] > 0) do={
-            :local wirelessConfigs;
+            :local wirelessConfigs ({});
             foreach i,k in=$wlans do={
-                :local temp [[:parse "/interface/wireless print as-value where .id=$k"]];
-                :local cmdsectemp [:parse "/interface wireless security-profiles print  as-value where  name=\$1"];
-                :local secTemp [$cmdsectemp ($temp->0->"security-profile")];
-                :local thisWirelessConfig {
-                  "encKey"=[$getEncKey ($secTemp->0)];
+                :local temp [[:parse "/interface wireless print as-value where .id=$k"]];
+                :local cmdsectemp [:parse "/interface wireless security-profiles print as-value where name=\$1"];
+                :local secTemp [$cmdsectemp ($k->"security-profile")];
+                :set ($wirelessConfigs->$i) {
+                  "encKey"=[$getEncKey ($k->"security-profile")];
                   "encType"=($secTemp->0->"authentication-types");
-                  "ssid"=($temp->0->"ssid")
+                  "ssid"=($k->"ssid")
                 };
-                :set ($wirelessConfigs->$i) $thisWirelessConfig;
             }
             :log info "collect all wireless interfaces from the system";
             :return { "status"=true; "wirelessConfigs"=$wirelessConfigs };
@@ -127,7 +126,7 @@
     :local configresponse [$getConfig];
     :local localwirelessConfigs [$getLocalWlans];
     :local output;
-    :local wirelessConfigs [:toarray ""];
+    :local wirelessConfigs ({});
     :if ($configresponse->"status" = true) do={
         :set wirelessConfigs ($configresponse->"response"->"host"->"wirelessConfigs");
     }
@@ -233,38 +232,26 @@
         ## start uploading local configs to host
         # item sended example from local: "{\"if\":\"$wIfName\",\"ssid\":\"$wIfSsid\",\"key\":\"$wIfKey\",\"keytypes\":\"$wIfKeyTypeString\"}"
         :log info "## wait for interfaces changes to be applied and can be retrieved from the device 5s ##";
-        :delay 5s; # wait for interfaces changes to be applied and can be retrieved from the device
-        :local InterfaceslocalConfigs;
-        :local getkeytypes  [:parse "/interface wireless security-profiles get [/interface wireless get \$1 security-profile] authentication-types"];
-        :foreach k,interfaceid in=[[:parse "/interface wireless find"]] do={
-            :local interfaceProps [[:parse "/interface wireless get $interfaceid"]];
-            :set ($InterfaceslocalConfigs->$k) {
-                "if"=([[:parse "/interface wireless get $interfaceid name"]]);
-                "key"=([[:parse "/interface wireless security-profile get [/interface wireless get $interfaceid security-profile] wpa2-pre-shared-key"]]);
-                "technology"="wireless";
-            };
-        };
-        :local SecProfileslocalConfigs; 
-        :foreach k,secid in=[[:parse "/interface wireless security-profile find"]] do={
-            :local secProf [[:parse "/interface wireless security-profile get $secid"]];
-            :local authtypes ($secProf->"authentication-types");
+        :delay 1s; # wait for interfaces changes to be applied and can be retrieved from the device
+        :local SecProfileslocalConfigs ({}); 
+        :foreach k,secid in=[[:parse "/interface wireless security-profile print as-value"]] do={
+            :local authtypes ($secid->"authentication-types");
             :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
-            :set ($SecProfileslocalConfigs->$k) {
+            :set ($SecProfileslocalConfigs->$k) ($secid+{
                 "authentication-types"=$authtypes;
                 "technology"="wireless";
-            };
+            });
         };
         :local sentbody "{}";
-        :local message ("uploading " . [:len $InterfaceslocalConfigs] . " interfaces to ispapp server");
-        :if ([:len $InterfaceslocalConfigs] = 0) do={
-            :set InterfaceslocalConfigs "[]";
+        :local message ("uploading " . [:len $localwirelessConfigs] . " interfaces to ispapp server");
+        :if ([:len $localwirelessConfigs] = 0) do={
+            :set localwirelessConfigs "[]";
         }
         :if ([:len $SecProfileslocalConfigs] = 0) do={
             :set SecProfileslocalConfigs "[]";
         }
-        :global getAllConfigs;
         :global ispappHTTPClient;
-        :set sentbody ([$getAllConfigs $InterfaceslocalConfigs $SecProfileslocalConfigs]->"json");
+        :set sentbody ([$getAllConfigs ($localwirelessConfigs->"wirelessConfigs") $SecProfileslocalConfigs]->"json");
         :local returned  [$ispappHTTPClient m=post a=config b=$sentbody];
         :return ($output+{
             "status"=true;

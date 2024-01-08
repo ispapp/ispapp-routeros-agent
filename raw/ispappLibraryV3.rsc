@@ -56,7 +56,7 @@
         :log info "start collect all wireless interfaces from the system ...";
         :local wlans [[:parse "/interface wifiwave2 print as-value"]];
         if ([:len $wlans] > 0) do={
-            :local wirelessConfigs;
+            :local wirelessConfigs ({});
             foreach i,intr in=$wlans do={
                 :local thisWirelessConfig {
                     "encKey"=($intr->"security.passphrase");
@@ -207,17 +207,14 @@
             };
         };
         :local SecProfileslocalConfigs; 
-        :foreach k,secprof in=[/interface wifiwave2 security print as-value] do={
+        :foreach k,secprof in=[[:parse "/interface wifiwave2 security print as-value"]] do={
             :local authtypes ($secprof->"authentication-types");
             :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
-            :set ($SecProfileslocalConfigs->$k) {
+            :set ($SecProfileslocalConfigs->$k) ($secprof+{
                 "name"=($secprof->"name");
                 "authentication-types"=$authtypes;
-                "technology"="wifiwave2";
-                "passphrase"=($secprof->"passphrase");
-                "connect-group"=($secprof->"connect-group");
-                "owe-transition-interface"=($secprof->"owe-transition-interface")
-            };
+                "technology"="wifiwave2"
+            });
         };
         # i need a device with wifiwave2 active to finish this part.
         :local sentbody "{}";
@@ -296,7 +293,7 @@
         :log info "start collect all wireless interfaces from the system ...";
         :local wlans [[:parse "/caps-man interface print as-value"]];
         if ([:len $wlans] > 0) do={
-            :local wirelessConfigs;
+            :local wirelessConfigs ({});
             foreach i,intr in=$wlans do={
                 :local cmdsectemp [:parse "/caps-man security print as-value where  name=\$1"];
                 :local cmdconftemp [:parse "/caps-man configuration print as-value where  name=\$1"];
@@ -456,19 +453,14 @@
             };
         };
         :local SecProfileslocalConfigs; 
-        :foreach k,secprof in=[[:parse "/caps-man/security print as-value"]] do={
+        :foreach k,secprof in=[[:parse "/caps-man security print as-value"]] do={
             :local authtypes ($secprof->"authentication-types");
             :if ([:len $authtypes] = 0) do={ :set authtypes "[]";}
-            :set ($SecProfileslocalConfigs->$k) {
+            :set ($SecProfileslocalConfigs->$k) ($secprof+{
                 "name"=($secprof->"name");
                 "authentication-types"=$authtypes;
-                "wpa2-pre-shared-key"=($secprof->"passphrase");
-                "technology"="cap";
-                "wpa-pre-shared-key"=($secprof->"passphrase");
-                "eap-methods"=($secprof->"eap-methods");
-                "tls-mode"=($secprof->"tls-mode");
-                "eap-radius-accounting"=($secprof->"eap-radius-accounting")
-            };
+                "technology"="cap"
+            });
         };
         # i need a device with wifiwave2 active to finish this part.
         :local sentbody "{}";
