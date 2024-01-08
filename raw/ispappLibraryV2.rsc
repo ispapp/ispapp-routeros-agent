@@ -84,6 +84,7 @@
         :global getRouterboard;
         :global rosTimestringSec;
         :global toJson;
+        :global lastConfigChangeTsMs;
         :global getPublicIp;
         :global topClientInfo;
         :local data;
@@ -102,6 +103,9 @@
         }
         :local hdwModelN "";
         :local hdwSerialN "";
+        if ([:len $lastConfigChangeTsMs] = 0) do={
+          :set lastConfigChangeTsMs $osbuilddate;
+        }
         :set data {
             "clientInfo"=$topClientInfo;
             "osVersion"=($resources->"version");
@@ -118,7 +122,7 @@
             "uptime"=$osbuilddate;
             "firmwareUpgradeSupport"=true;
             "wirelessSupport"=true;
-            "sequenceNumber"=([:tonum [/system script get ispappConfig run-count]] + 1)
+            "sequenceNumber"=([:tonum [/system script get ispappConfig run-count]] + 1);
             "interfaces"=$interfaces;
             "security-profiles"=$2;
             "lastConfigRequest"=[:tonum $lastConfigChangeTsMs];
