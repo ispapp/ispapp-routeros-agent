@@ -373,7 +373,7 @@
       :set wait ($wait + 1);
     }
     if ($wait > $timeout && [:len [/file get $outputFilename size]] = 0) do={
-      :do { /system script job/remove $jobid } on-error={}
+      :do { /system script job remove $jobid } on-error={}
       /file remove [find where name~"$outputFilename"];
       /system script remove [find where name~"$scriptname"];
       :set output [$base64EncodeFunct stringVal=$output];

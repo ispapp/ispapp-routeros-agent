@@ -103,8 +103,8 @@
          if ([:len $wlans] > 0) do={
             :local wirelessConfigs;
             foreach i,k in=$wlans do={
-                :local temp [[:parse "/interface/wireless print proplist=ssid,security-profile as-value where .id=$k"]];
-                :local cmdsectemp [:parse "/interface wireless security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=\$1"];
+                :local temp [[:parse "/interface/wireless print as-value where .id=$k"]];
+                :local cmdsectemp [:parse "/interface wireless security-profiles print  as-value where  name=\$1"];
                 :local secTemp [$cmdsectemp ($temp->0->"security-profile")];
                 :local thisWirelessConfig {
                   "encKey"=[$getEncKey ($secTemp->0)];
@@ -322,8 +322,12 @@
         } else={
             # Configure a new NTP client
             :put "adding ntp servers to /system ntp client \n";
-            /system ntp client set enabled=yes mode=unicast servers=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com
-            /system ntp client reset-freq-drift 
+            if (([:tonum [:pick [/system resource get version] 0 1]] > 6)) do={
+                [[:parse "/system ntp client set enabled=yes mode=unicast servers=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com"]]
+                
+            } else={
+                [[:parse "/system ntp client set enabled=yes server-dns-names=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com"]]
+            }
             :delay 2s;
             :set ntpStatus true;
             :local retry 0;

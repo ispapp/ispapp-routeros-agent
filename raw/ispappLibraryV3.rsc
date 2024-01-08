@@ -294,23 +294,23 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :log info "start collect all wireless interfaces from the system ...";
-        :local wlans [/caps-man configuration print proplist=disabled,security,channel,configuration as-value];
+        :local wlans [[:parse "/caps-man interface print as-value"]];
         if ([:len $wlans] > 0) do={
-        :local wirelessConfigs;
-        foreach i,intr in=$wlans do={
-            :local cmdsectemp [:parse "/caps-man security print proplist=passphrase,authentication-types,name  as-value where  name=\$1"];
-            :local cmdconftemp [:parse "/caps-man configuration print proplist=ssid,security  as-value where  name=\$1"];
-            :local conftemp [$cmdconftemp ($intr->"configuration")];
-            :local secTemp [$cmdsectemp ($conftemp->"security")];
-            :local thisWirelessConfig {
-                "encKey"=($secTemp->0->"passphrase");
-                "encType"=($secTemp->0->"authentication-types");
-                "ssid"=($conftemp->0->"ssid")
-            };
-            :set ($wirelessConfigs->$i) $thisWirelessConfig;
-        }
-        :log info "collect all wireless interfaces from the system";
-        :return { "status"=true; "wirelessConfigs"=$wirelessConfigs };
+            :local wirelessConfigs;
+            foreach i,intr in=$wlans do={
+                :local cmdsectemp [:parse "/caps-man security print as-value where  name=\$1"];
+                :local cmdconftemp [:parse "/caps-man configuration print as-value where  name=\$1"];
+                :local conftemp [$cmdconftemp ($intr->"configuration")];
+                :local secTemp [$cmdsectemp ($conftemp->"security")];
+                :local thisWirelessConfig {
+                    "encKey"=($secTemp->0->"passphrase");
+                    "encType"=($secTemp->0->"authentication-types");
+                    "ssid"=($conftemp->0->"ssid")
+                };
+                :set ($wirelessConfigs->$i) $thisWirelessConfig;
+            }
+            :log info "collect all wireless interfaces from the system";
+            :return { "status"=true; "wirelessConfigs"=$wirelessConfigs };
         } else={
         :log info "collect all wireless interfaces from the system: no wireless interfaces found";
         :return { "status"=false; "message"="no wireless interfaces found" };
