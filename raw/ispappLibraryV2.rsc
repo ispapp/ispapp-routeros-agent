@@ -90,7 +90,7 @@
         :local data;
         :local resources [/system resource get];
         :local osbuilddate [$rosTimestringSec ($resources->"build-time")];
-        :local interfaces;
+        :local interfaces ({});
         foreach k,v in=[/interface find] do={
             :local Name [/interface get $v name];
             :local Mac [/interface get $v mac-address];
