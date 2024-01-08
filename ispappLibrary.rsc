@@ -902,8 +902,8 @@
          if ([:len \$wlans] > 0) do={
             :local wirelessConfigs;
             foreach i,k in=\$wlans do={
-                :local temp [[:parse \"/interface/wireless print proplist=ssid,security-profile as-value where .id=\$k\"]];
-                :local cmdsectemp [:parse \"/interface wireless security-profiles print proplist=wpa-pre-shared-key,authentication-types,wpa2-pre-shared-key  as-value where  name=\\\$1\"];
+                :local temp [[:parse \"/interface/wireless print as-value where .id=\$k\"]];
+                :local cmdsectemp [:parse \"/interface wireless security-profiles print  as-value where  name=\\\$1\"];
                 :local secTemp [\$cmdsectemp (\$temp->0->\"security-profile\")];
                 :local thisWirelessConfig {
                   \"encKey\"=[\$getEncKey (\$secTemp->0)];
@@ -1121,8 +1121,12 @@
         } else={
             # Configure a new NTP client
             :put \"adding ntp servers to /system ntp client \\n\";
-            /system ntp client set enabled=yes mode=unicast servers=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com
-            /system ntp client reset-freq-drift 
+            if (([:tonum [:pick [/system resource get version] 0 1]] > 6)) do={
+                [[:parse \"/system ntp client set enabled=yes mode=unicast servers=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com\"]]
+                
+            } else={
+                [[:parse \"/system ntp client set enabled=yes server-dns-names=time.nist.gov,time.google.com,time.cloudflare.com,time.windows.com\"]]
+            }
             :delay 2s;
             :set ntpStatus true;
             :local retry 0;
@@ -2370,23 +2374,23 @@
         # collect all wireless interfaces from the system
         # format them to be sent to server
         :log info \"start collect all wireless interfaces from the system ...\";
-        :local wlans [/caps-man configuration print proplist=disabled,security,channel,configuration as-value];
+        :local wlans [[:parse \"/caps-man interface print as-value\"]];
         if ([:len \$wlans] > 0) do={
-        :local wirelessConfigs;
-        foreach i,intr in=\$wlans do={
-            :local cmdsectemp [:parse \"/caps-man security print proplist=passphrase,authentication-types,name  as-value where  name=\\\$1\"];
-            :local cmdconftemp [:parse \"/caps-man configuration print proplist=ssid,security  as-value where  name=\\\$1\"];
-            :local conftemp [\$cmdconftemp (\$intr->\"configuration\")];
-            :local secTemp [\$cmdsectemp (\$conftemp->\"security\")];
-            :local thisWirelessConfig {
-                \"encKey\"=(\$secTemp->0->\"passphrase\");
-                \"encType\"=(\$secTemp->0->\"authentication-types\");
-                \"ssid\"=(\$conftemp->0->\"ssid\")
-            };
-            :set (\$wirelessConfigs->\$i) \$thisWirelessConfig;
-        }
-        :log info \"collect all wireless interfaces from the system\";
-        :return { \"status\"=true; \"wirelessConfigs\"=\$wirelessConfigs };
+            :local wirelessConfigs;
+            foreach i,intr in=\$wlans do={
+                :local cmdsectemp [:parse \"/caps-man security print as-value where  name=\\\$1\"];
+                :local cmdconftemp [:parse \"/caps-man configuration print as-value where  name=\\\$1\"];
+                :local conftemp [\$cmdconftemp (\$intr->\"configuration\")];
+                :local secTemp [\$cmdsectemp (\$conftemp->\"security\")];
+                :local thisWirelessConfig {
+                    \"encKey\"=(\$secTemp->0->\"passphrase\");
+                    \"encType\"=(\$secTemp->0->\"authentication-types\");
+                    \"ssid\"=(\$conftemp->0->\"ssid\")
+                };
+                :set (\$wirelessConfigs->\$i) \$thisWirelessConfig;
+            }
+            :log info \"collect all wireless interfaces from the system\";
+            :return { \"status\"=true; \"wirelessConfigs\"=\$wirelessConfigs };
         } else={
         :log info \"collect all wireless interfaces from the system: no wireless interfaces found\";
         :return { \"status\"=false; \"message\"=\"no wireless interfaces found\" };
@@ -2995,7 +2999,7 @@
       :set wait (\$wait + 1);
     }
     if (\$wait > \$timeout && [:len [/file get \$outputFilename size]] = 0) do={
-      :do { /system script job/remove \$jobid } on-error={}
+      :do { /system script job remove \$jobid } on-error={}
       /file remove [find where name~\"\$outputFilename\"];
       /system script remove [find where name~\"\$scriptname\"];
       :set output [\$base64EncodeFunct stringVal=\$output];
