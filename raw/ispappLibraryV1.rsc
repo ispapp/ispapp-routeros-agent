@@ -110,9 +110,10 @@
             };
             :local wirelessConfigs ({});
             foreach i,k in=$wlans do={
-                :local temp [[:parse "/interface wireless print as-value where .id=$k"]];
                 :local cmdsectemp [:parse "/interface wireless security-profiles print as-value where name=\$1"];
+                :local getdisabled [:parse "/interface wireless get \$1 disabled"];
                 :local secTemp [$cmdsectemp ($k->"security-profile")];
+                :local isdisabled [$getdisabled ($k->"name")];
                 :set ($wirelessConfigs->$i) {
                     ".id"=($k->".id");
                     "name"=($k->"name");
@@ -123,8 +124,8 @@
                     "mac-address"=($k->"mac-address");
                     "master-interface"=[$getmaster $k];
                     "security-profile"=($k->"security-profile");
-                    "disabled"=($k->"disabled");
-                    "running"=(!($k->"disabled"));
+                    "disabled"=$isdisabled;
+                    "running"=(!$isdisabled);
                     "hide-ssid"=($k->"hide-ssid")
                 };
             }
