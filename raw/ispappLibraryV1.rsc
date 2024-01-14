@@ -101,15 +101,31 @@
                     }
                 }
             }
+            :local getmaster do={
+                if ($1->"interface-type" = "virtual") do={
+                    :return ($1->"master-interface");
+                } else={
+                    :return ($1->"interface-type");
+                }
+            };
             :local wirelessConfigs ({});
             foreach i,k in=$wlans do={
                 :local temp [[:parse "/interface wireless print as-value where .id=$k"]];
                 :local cmdsectemp [:parse "/interface wireless security-profiles print as-value where name=\$1"];
                 :local secTemp [$cmdsectemp ($k->"security-profile")];
                 :set ($wirelessConfigs->$i) {
-                  "encKey"=[$getEncKey ($k->"security-profile")];
-                  "encType"=($secTemp->0->"authentication-types");
-                  "ssid"=($k->"ssid")
+                    ".id"=($k->".id");
+                    "name"=($k->"name");
+                    "key"=[$getEncKey ($k->"security-profile")];
+                    "ssid"=($k->"ssid");
+                    "band"=($k->"band");
+                    "interface-type"=($k->"interface-type");
+                    "mac-address"=($k->"mac-address");
+                    "master-interface"=[$getmaster $k];
+                    "security-profile"=($k->"security-profile");
+                    "disabled"=($k->"disabled");
+                    "running"=(!($k->"disabled"));
+                    "hide-ssid"=($k->"hide-ssid")
                 };
             }
             :log info "collect all wireless interfaces from the system";
@@ -135,7 +151,7 @@
         :global SyncSecProfile do={
             # add security profile if not found
             :do {
-                :local key ($1->"encKey");
+                :local key ($1->"key");
                 # search for profile with this same password if exist if not just create it.
                 :local currentProfilesAtPassword do={
                     :local currentprfwpa2 [:parse "/interface wireless security-profiles print as-value where wpa2-pre-shared-key=\$1"];
