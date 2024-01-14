@@ -909,13 +909,12 @@
             };
             :local wirelessConfigs ({});
             foreach i,k in=\$wlans do={
-                :local cmdsectemp [:parse \"/interface wireless security-profiles print as-value where name=\\\$1\"];
                 :local getdisabled [:parse \"/interface wireless get \\\$1 disabled\"];
-                :local secTemp [\$cmdsectemp (\$k->\"security-profile\")];
                 :local isdisabled [\$getdisabled (\$k->\"name\")];
                 :set (\$wirelessConfigs->\$i) {
                     \".id\"=(\$k->\".id\");
-                    \"name\"=(\$k->\"name\");
+                    \"if\"=(\$k->\"name\");
+                    \"technology\"=\"wireless\";
                     \"key\"=[\$getEncKey (\$k->\"security-profile\")];
                     \"ssid\"=(\$k->\"ssid\");
                     \"band\"=(\$k->\"band\");
