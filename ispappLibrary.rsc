@@ -900,15 +900,31 @@
                     }
                 }
             }
+            :local getmaster do={
+                if (\$1->\"interface-type\" = \"virtual\") do={
+                    :return (\$1->\"master-interface\");
+                } else={
+                    :return (\$1->\"interface-type\");
+                }
+            };
             :local wirelessConfigs ({});
             foreach i,k in=\$wlans do={
                 :local temp [[:parse \"/interface wireless print as-value where .id=\$k\"]];
                 :local cmdsectemp [:parse \"/interface wireless security-profiles print as-value where name=\\\$1\"];
                 :local secTemp [\$cmdsectemp (\$k->\"security-profile\")];
                 :set (\$wirelessConfigs->\$i) {
-                  \"encKey\"=[\$getEncKey (\$k->\"security-profile\")];
-                  \"encType\"=(\$secTemp->0->\"authentication-types\");
-                  \"ssid\"=(\$k->\"ssid\")
+                    \".id\"=(\$k->\".id\");
+                    \"name\"=(\$k->\"name\");
+                    \"key\"=[\$getEncKey (\$k->\"security-profile\")];
+                    \"ssid\"=(\$k->\"ssid\");
+                    \"band\"=(\$k->\"band\");
+                    \"interface-type\"=(\$k->\"interface-type\");
+                    \"mac-address\"=(\$k->\"mac-address\");
+                    \"master-interface\"=[\$getmaster \$k];
+                    \"security-profile\"=(\$k->\"security-profile\");
+                    \"disabled\"=(\$k->\"disabled\");
+                    \"running\"=(!(\$k->\"disabled\"));
+                    \"hide-ssid\"=(\$k->\"hide-ssid\")
                 };
             }
             :log info \"collect all wireless interfaces from the system\";
@@ -934,7 +950,7 @@
         :global SyncSecProfile do={
             # add security profile if not found
             :do {
-                :local key (\$1->\"encKey\");
+                :local key (\$1->\"key\");
                 # search for profile with this same password if exist if not just create it.
                 :local currentProfilesAtPassword do={
                     :local currentprfwpa2 [:parse \"/interface wireless security-profiles print as-value where wpa2-pre-shared-key=\\\$1\"];
@@ -2129,8 +2145,9 @@
             :local wirelessConfigs ({});
             foreach i,intr in=\$wlans do={
                 :local thisWirelessConfig {
-                    \"encKey\"=(\$intr->\"security.passphrase\");
-                    \"encType\"=(\$intr->\"security.authentication-types\");
+                    \"key\"=(\$intr->\"security.passphrase\");
+                    \"keytypes\"=[:tostr (\$intr->\"security.authentication-types\")];
+                    \"security-profile\"=(\$intr->\"security.name\");
                     \"ssid\"=(\$intr->\"configuration.ssid\")
                 };
                 :set (\$wirelessConfigs->\$i) \$thisWirelessConfig;
@@ -2161,8 +2178,8 @@
         :global SyncSecProfile do={
             # add security profile if not found
             :do {
-                :if ([:len (\$1->\"encKey\")] > 0) do={
-                    :local key (\$1->\"encKey\");
+                :if ([:len (\$1->\"key\")] > 0) do={
+                    :local key (\$1->\"key\");
                     :local tempName (\"ispapp_\" . (\$1->\"ssid\"));
                     # search for profile with this same password if exist if not just create it.
                     :local currentprfpass [:parse \"/interface wifiwave2 security print where passphrase=\\\$1 as-value\"];
@@ -2370,8 +2387,9 @@
                 :local conftemp [\$cmdconftemp (\$intr->\"configuration\")];
                 :local secTemp [\$cmdsectemp (\$conftemp->\"security\")];
                 :local thisWirelessConfig {
-                    \"encKey\"=(\$secTemp->0->\"passphrase\");
-                    \"encType\"=(\$secTemp->0->\"authentication-types\");
+                    \"key\"=(\$secTemp->0->\"passphrase\");
+                    \"keytypes\"=[:tostr (\$secTemp->0->\"authentication-types\")];
+                    \"security-profile\"=(\$secTemp->0->\"name\");
                     \"ssid\"=(\$conftemp->0->\"ssid\")
                 };
                 :set (\$wirelessConfigs->\$i) \$thisWirelessConfig;
@@ -2402,7 +2420,7 @@
         :global SyncSecProfile do={
             # add security profile if not found
             :do {
-                :local key (\$1->\"encKey\");
+                :local key (\$1->\"key\");
                 :local tempName (\"ispapp_\" . (\$1->\"ssid\"));
                 # search for profile with this same password if exist if not just create it.
                 :local currentprfpass [:parse \"/caps-man security print as-value where passphrase=\\\$1\"];
