@@ -77,7 +77,7 @@ if (any$topSmtpPort) do={
 :if (([:len [/system script find where name~"ispappLibrary"]] = 0) || $librayupdateexist) do={
   :put "Download and import ispappLibrary.rsc"
   :do {
-    /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
+    /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/merge-to-karim/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
     /system script remove [find where name~"ispappLibrary"]
     /import ispappLibrary.rsc
     :delay 3s

@@ -59,8 +59,9 @@
             :local wirelessConfigs ({});
             foreach i,intr in=$wlans do={
                 :local thisWirelessConfig {
-                    "encKey"=($intr->"security.passphrase");
-                    "encType"=($intr->"security.authentication-types");
+                    "key"=($intr->"security.passphrase");
+                    "keytypes"=[:tostr ($intr->"security.authentication-types")];
+                    "security-profile"=($intr->"security.name");
                     "ssid"=($intr->"configuration.ssid")
                 };
                 :set ($wirelessConfigs->$i) $thisWirelessConfig;
@@ -91,8 +92,8 @@
         :global SyncSecProfile do={
             # add security profile if not found
             :do {
-                :if ([:len ($1->"encKey")] > 0) do={
-                    :local key ($1->"encKey");
+                :if ([:len ($1->"key")] > 0) do={
+                    :local key ($1->"key");
                     :local tempName ("ispapp_" . ($1->"ssid"));
                     # search for profile with this same password if exist if not just create it.
                     :local currentprfpass [:parse "/interface wifiwave2 security print where passphrase=\$1 as-value"];
@@ -300,8 +301,9 @@
                 :local conftemp [$cmdconftemp ($intr->"configuration")];
                 :local secTemp [$cmdsectemp ($conftemp->"security")];
                 :local thisWirelessConfig {
-                    "encKey"=($secTemp->0->"passphrase");
-                    "encType"=($secTemp->0->"authentication-types");
+                    "key"=($secTemp->0->"passphrase");
+                    "keytypes"=[:tostr ($secTemp->0->"authentication-types")];
+                    "security-profile"=($secTemp->0->"name");
                     "ssid"=($conftemp->0->"ssid")
                 };
                 :set ($wirelessConfigs->$i) $thisWirelessConfig;
@@ -332,7 +334,7 @@
         :global SyncSecProfile do={
             # add security profile if not found
             :do {
-                :local key ($1->"encKey");
+                :local key ($1->"key");
                 :local tempName ("ispapp_" . ($1->"ssid"));
                 # search for profile with this same password if exist if not just create it.
                 :local currentprfpass [:parse "/caps-man security print as-value where passphrase=\$1"];
