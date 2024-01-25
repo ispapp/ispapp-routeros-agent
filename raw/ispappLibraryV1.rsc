@@ -115,6 +115,7 @@
                 :set ($wirelessConfigs->$i) {
                     ".id"=($k->".id");
                     "if"=($k->"name");
+                    "name"=($k->"name");
                     "technology"="wireless";
                     "key"=[$getEncKey ($k->"security-profile")];
                     "ssid"=($k->"ssid");

@@ -201,6 +201,7 @@
         :foreach k,wifiwave in=[[:parse "/interface wifiwave2 print detail as-value"]] do={
             :set ($InterfaceslocalConfigs->$k) {
                 "if"=($wifiwave->"name");
+                "name"=($wifiwave->"name");
                 "ssid"=($wifiwave->"configuration.ssid");
                 "key"=($getsecurity->"security.passphrase");
                 "technology"="wifiwave2";
@@ -447,6 +448,7 @@
             :local currentsec [$getsecurity ($currentconfigs->"security")]
             :set ($InterfaceslocalConfigs->$k) {
                 "if"=($mancap->"name");
+                "name"=($mancap->"name");
                 "ssid"=($currentconfigs->"ssid");
                 "key"=($getsecurity->"passphrase");
                 "technology"="cap";

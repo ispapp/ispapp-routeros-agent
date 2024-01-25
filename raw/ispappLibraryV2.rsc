@@ -97,6 +97,7 @@
             :local DefaultName [:parse "/interface get \$1 default-name"];
             :set ($interfaces->$k) {
                 "if"=$Name;
+                "name"=$Name;
                 "mac"=$Mac;
                 "defaultIf"=[$DefaultName $v]
             };
@@ -210,6 +211,7 @@
     :local maccount [:len [/ip arp find where interface=$ifaceName]];
     :set ($cout->$i) {
     "if"=($ifaceprops->"name");
+    "name"=($ifaceprops->"name");
     "recBytes"=($ifaceprops->"rx-byte");
     "recPackets"=($ifaceprops->"rx-packet");
     "recErrors"=($ifaceprops->"rx-error");
