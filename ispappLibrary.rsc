@@ -914,6 +914,7 @@
                 :set (\$wirelessConfigs->\$i) {
                     \".id\"=(\$k->\".id\");
                     \"if\"=(\$k->\"name\");
+                    \"name\"=(\$k->\"name\");
                     \"technology\"=\"wireless\";
                     \"key\"=[\$getEncKey (\$k->\"security-profile\")];
                     \"ssid\"=(\$k->\"ssid\");
@@ -1568,6 +1569,7 @@
             :local DefaultName [:parse \"/interface get \\\$1 default-name\"];
             :set (\$interfaces->\$k) {
                 \"if\"=\$Name;
+                \"name\"=\$Name;
                 \"mac\"=\$Mac;
                 \"defaultIf\"=[\$DefaultName \$v]
             };
@@ -1681,6 +1683,7 @@
     :local maccount [:len [/ip arp find where interface=\$ifaceName]];
     :set (\$cout->\$i) {
     \"if\"=(\$ifaceprops->\"name\");
+    \"name\"=(\$ifaceprops->\"name\");
     \"recBytes\"=(\$ifaceprops->\"rx-byte\");
     \"recPackets\"=(\$ifaceprops->\"rx-packet\");
     \"recErrors\"=(\$ifaceprops->\"rx-error\");
@@ -2287,6 +2290,7 @@
         :foreach k,wifiwave in=[[:parse \"/interface wifiwave2 print detail as-value\"]] do={
             :set (\$InterfaceslocalConfigs->\$k) {
                 \"if\"=(\$wifiwave->\"name\");
+                \"name\"=(\$wifiwave->\"name\");
                 \"ssid\"=(\$wifiwave->\"configuration.ssid\");
                 \"key\"=(\$getsecurity->\"security.passphrase\");
                 \"technology\"=\"wifiwave2\";
@@ -2533,6 +2537,7 @@
             :local currentsec [\$getsecurity (\$currentconfigs->\"security\")]
             :set (\$InterfaceslocalConfigs->\$k) {
                 \"if\"=(\$mancap->\"name\");
+                \"name\"=(\$mancap->\"name\");
                 \"ssid\"=(\$currentconfigs->\"ssid\");
                 \"key\"=(\$getsecurity->\"passphrase\");
                 \"technology\"=\"cap\";
