@@ -2,3 +2,5 @@ raw/test.rsc
 raw/old*.rsc
 .vscode/
 test.json
+raw/test.karim.rsc
+raw/test.merge-to-karim.rsc
