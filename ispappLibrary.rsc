@@ -1050,7 +1050,7 @@
         :local SecProfileslocalConfigs ({}); 
         :foreach k,secid in=[[:parse \"/interface wireless security-profile print as-value\"]] do={
             :local authtypes (\$secid->\"authentication-types\");
-            :local isdefault [:parse \"/interface wireless security-profile get *k default\"];
+            :local isdefault [:parse \"/interface wireless security-profile get \$k default\"];
             :if ([:len \$authtypes] = 0) do={ :set authtypes \"[]\";}
             :set (\$SecProfileslocalConfigs->\$k) (\$secid+{
                 \"authentication-types\"=\$authtypes;
