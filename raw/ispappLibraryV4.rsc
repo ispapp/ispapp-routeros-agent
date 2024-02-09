@@ -314,7 +314,6 @@
       if ($cmd=>"executed" = false) do={
         :set output [$execCmd ($cmd->"cmd") ($cmd->"uuidv4")];
         :set object ({
-          "cmd"=($cmd->"cmd");
           "uuidv4"=($cmd->"uuidv4");
           "ws_id"=($cmd->"ws_id");
           "sequenceNumber"=$runcount;
