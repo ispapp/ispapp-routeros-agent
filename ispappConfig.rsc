@@ -109,6 +109,8 @@ if (any\$topSmtpPort) do={
   :global WirelessInterfacesConfigSync;
   :global Wifewave2InterfacesConfigSync;
   :global CapsConfigSync;
+  :global fillGlobalConsts;
+  :local cout ({});
   :local iscap do={
     :do {
       :return ([[:parse \"/caps-man manager print as-value\"]]->\"enabled\");
@@ -117,13 +119,16 @@ if (any\$topSmtpPort) do={
     }
   }
   :if ([\$iscap]) do={
-    :put [\$CapsConfigSync]
+    :set cout [\$CapsConfigSync]
   } else={
     :if ([/system package find name~\"wifiwave2\"] = \"\") do={
-      :put [\$WirelessInterfacesConfigSync]
+      :set cout [\$WirelessInterfacesConfigSync]
     } else={
-      :put [\$Wifewave2InterfacesConfigSync]
+      :set cout [\$Wifewave2InterfacesConfigSync]
     }
+  }
+  :if (\$cout->\"status\" && [:len (\$cout->\"response\"->\"parsed\")] > 0) do={
+    [\$fillGlobalConsts (\$cout->\"response\"->\"parsed\")]
   }
 } on-error={
   /system scheduler disable [find name~\"ispappUpdate\" disabled=no]
