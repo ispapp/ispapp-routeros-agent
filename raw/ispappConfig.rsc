@@ -128,6 +128,10 @@ if (any$topSmtpPort) do={
   }
   :if ($cout->"status" && [:len ($cout->"response"->"parsed")] > 0) do={
     :put [$fillGlobalConsts ($cout->"response"->"parsed")]
+    :put "\n";
+    :put ($cout->"response"->"parsed");
+  } else {
+    :put $cout;
   }
 } on-error={
   /system scheduler disable [find name~"ispappUpdate" disabled=no]
