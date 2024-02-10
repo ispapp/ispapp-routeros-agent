@@ -280,7 +280,7 @@
     } else={
         :log info "no local wireless interfaces found (from WirelessInterfacesConfigSync function in ispLibrary.rsc)";
         :return ($output+{
-            "status"=true;
+            "status"=false;
             "message1"="no wireless interfaces found"
         });
     }

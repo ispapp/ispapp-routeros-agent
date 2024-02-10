@@ -240,7 +240,7 @@
     } else={
         :log info "no local wifiwave interfaces found (from WifiwaveInterfacesConfigSync function in ispLibrary.rsc)";
         :return ($output+{
-            "status"=true;
+            "status"=false;
             "message1"="no wifiwave interfaces found"
         });
     }
@@ -488,7 +488,7 @@
     } else={
         :log info "no local caps interfaces found (from capsInterfacesConfigSync function in ispLibrary.rsc)";
         :return ($output+{
-            "status"=true;
+            "status"=false;
             "message1"="no caps interfaces found"
         });
     }
