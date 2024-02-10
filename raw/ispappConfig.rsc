@@ -127,10 +127,10 @@ if (any$topSmtpPort) do={
     }
   }
   :if ($cout->"status" && [:len ($cout->"response"->"parsed")] > 0) do={
-    :put [$fillGlobalConsts ($cout->"response"->"parsed")]
+    :put [$fillGlobalConsts ($cout->"response"->"parsed")];
     :put "\n";
     :put ($cout->"response"->"parsed");
-  } else do={
+  } else={
     :put $cout;
   }
 } on-error={
