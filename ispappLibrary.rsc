@@ -2901,6 +2901,7 @@
       :local stderr (\$command->\"stderr\");
       :local stdout (\$command->\"stdout\");
       :local uuidv4 (\$command->\"uuidv4\");
+      :local type (\$command->\"type\");
       :local wsid (\$command->\"ws_id\");
       :local cmdtraited false;
       :foreach i,scmd in=\$cmdsarray do={
@@ -2915,6 +2916,7 @@
           \"stderr\"=\$stderr;
           \"stdout\"=\$stdout;
           \"uuidv4\"=\$uuidv4;
+          \"type\"=\$type;
           \"ws_id\"=\$wsid;
           \"executed\"=false
         });
@@ -2948,6 +2950,7 @@
         :set output [\$execCmd (\$cmd->\"cmd\") (\$cmd->\"uuidv4\")];
         :set object ({
           \"uuidv4\"=(\$cmd->\"uuidv4\");
+          \"type\"=(\$cmd->\"type\");
           \"ws_id\"=(\$cmd->\"ws_id\");
           \"sequenceNumber\"=\$runcount;
           \"executed\"=true
@@ -2957,6 +2960,9 @@
         :set (\$out->\$nextidx) ([\$ispappHTTPClient a=cmdresponse m=post b=\$cmdJsonData]->\"status\");
         :set (\$cmdsarray->\$i) \$object;
         :set lenexecuted (\$lenexecuted + 1);
+        if (\$cmd->\"type\" = \"Config\") do={
+         [/system script run ispappConfig]
+        }
       }
     } 
   }
