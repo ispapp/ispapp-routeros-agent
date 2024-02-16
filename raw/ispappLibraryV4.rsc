@@ -308,12 +308,13 @@
   :local object ({});
   :local lenexecuted 0;
   :local runcount 1;
+  :global WirelessInterfacesConfigSync;
   :if ([:len [/system script find where name~"ispappUpdate"]] > 0) do={
     :set runcount [/system script get ispappUpdate run-count];
   }
   if ([:len $cmdsarray] > 0) do={
     :foreach i,cmd in=$cmdsarray do={
-      if ($cmd=>"executed" = false) do={
+      if ($cmd->"executed" = false) do={
         :set output [$execCmd ($cmd->"cmd") ($cmd->"uuidv4")];
         :set object ({
           "uuidv4"=($cmd->"uuidv4");
@@ -328,7 +329,7 @@
         :set ($cmdsarray->$i) $object;
         :set lenexecuted ($lenexecuted + 1);
         if ($cmd->"type" = "Config") do={
-         [/system script run ispappConfig]
+         :put [$WirelessInterfacesConfigSync]
         }
       }
     } 
