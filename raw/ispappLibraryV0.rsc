@@ -597,12 +597,12 @@
       :return $returnVal;
      
     } on-error={
-      :set returnVal ("Error: Base64 encode error.");
+      :set returnVal ("RXJyb3I6IEJhc2U2NCBlbmNvZGUgZXJyb3Iu");
       :return $returnVal;
     }
 
   } else={
-    :set returnVal ("Error: Base64 encode error, likely an empty value.");
+    :set returnVal ("RXJyb3I6IEJhc2U2NCBlbmNvZGUgZXJyb3IsIGxpa2VseSBhbiBlbXB0eSB2YWx1ZS4=");
     :return $returnVal;
   }
   
