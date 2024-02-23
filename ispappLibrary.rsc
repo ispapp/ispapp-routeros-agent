@@ -2820,6 +2820,7 @@
 :global SpeedTest do={
   :global ispappHTTPClient;
   :global toJson;
+  :local cout ({});
   :do {
     :local txAvg 0 
     :local rxAvg 0 
@@ -2848,9 +2849,12 @@
     :local jsonResult [\$toJson \$results];
     :log debug (\$jsonResult);
     :local result [\$ispappHTTPClient a=bandwidth m=post b=\$jsonResult];
-    :put (\$result);
+    :set cout ({\"status\"=true;\"responce\"=\$result;\"results\"=\$results})
+    :return (\$cout);
   } on-error={
-    :log info (\"HTTP Error, no response for speedtest request with command error to ISPApp.\");
+    :local error \"HTTP Error, no response for speedtest request with command error to ISPApp.\";
+    :log info \$error;
+    :return ({\"status\"=false;\"reason\"=\$error});
   }
 }
 # Function to fetch Upgrade script and execute it
