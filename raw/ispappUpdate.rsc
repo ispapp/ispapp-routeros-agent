@@ -17,16 +17,18 @@
             :delay ([:len ($response->"cmds")] . "s");
             :put [$executeCmds];
           }
-          if (($response->"executeSpeedtest") = "true") do={
+          if (($response->"executeSpeedtest") = true) do={
             :put [$execActions a="executeSpeedtest"]
           }
           if (($response->"fwStatus") = "pending") do={
             :put [$execActions a="upgrade"]
           }
-          if (($response->"updateFast") = "true") do={
+          if (($response->"updateFast") = true) do={
             /system scheduler set ispappUpdate interval=3s disabled=no
+            /system scheduler set ispappConfig interval=1m disabled=no
           } else={
             /system scheduler set ispappUpdate interval=30s disabled=no
+            /system scheduler set ispappConfig interval=5m disabled=no
           }
           if (($response->"reboot") = "1") do={
             :put [$execActions a="reboot"]
