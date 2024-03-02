@@ -6,7 +6,7 @@ To facilitate testing of the MikroTik agent, follow the steps below to seamlessl
 
 1. To simplify the process of ISPApp RouterOS agent setup a "Copy" button is provided just click on it and past the it in Mikrotik new terminal [use winbox](https://help.mikrotik.com/docs/display/ROS/Winbox):
 ```routeros
-/tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispapp.rsc" dst-path="ispapp.rsc"; /import ispapp.rsc;
+/tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/major-refactor/ispapp.rsc" dst-path="ispapp.rsc"; /import ispapp.rsc;
 ```
 
 >Step 2: Replace Credentials in the Code
@@ -40,7 +40,7 @@ _Converts a mixed array into a JSON string_
     "name"="John"; 
     "age"=30; 
     "hobbies"={ 
-        "sports"={"football"; "basketball"="karim"}; 
+        "sports"={"football"; "basketball"="major-refactor"}; 
         "music"={"rock"=2; "pop"}
         }; 
     "letters"=("tick", {"nice"="me"; "hsi"=0})

@@ -13,7 +13,7 @@
 :global TopVariablesDiagnose;
 :global prepareSSL;
 :global login;
-:global librariesurl "https://api.github.com/repos/ispapp/ispapp-routeros-agent/commits?sha=karim&path=ispappLibrary.rsc&per_page=1";
+:global librariesurl "https://api.github.com/repos/ispapp/ispapp-routeros-agent/commits?sha=major-refactor&path=ispappLibrary.rsc&per_page=1";
 :global librarylastversion;
 # setup email server
 if (any$topDomain) do={
@@ -73,11 +73,11 @@ if (any$topSmtpPort) do={
 } on-error={
   :log error "error accured while fetching the last release of library!";
 }
-# start loading libraries from karim branch.
+# start loading libraries from major-refactor branch.
 :if (([:len [/system script find where name~"ispappLibrary"]] = 0) || $librayupdateexist) do={
   :put "Download and import ispappLibrary.rsc"
   :do {
-    /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/karim/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
+    /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/major-refactor/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
     /system script remove [find where name~"ispappLibrary"]
     /import ispappLibrary.rsc
     :delay 3s
