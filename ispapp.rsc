@@ -4,7 +4,7 @@ foreach envVarId in=[/system script environment find] do={
 }
 :global topKey "#####HOST_KEY#####";
 :global topDomain "#####DOMAIN#####";
-:global topClientInfo "RouterOS-v3.14.1";
+:global topClientInfo "RouterOS-v3.14.2";
 :global topListenerPort "8550";
 :global topServerPort "443";
 :global topSmtpPort "8465";
