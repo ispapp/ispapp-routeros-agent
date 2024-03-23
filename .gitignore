@@ -4,3 +4,4 @@ raw/old*.rsc
 test.json
 raw/test.karim.rsc
 raw/test.merge-to-karim.rsc
+cli/cli
