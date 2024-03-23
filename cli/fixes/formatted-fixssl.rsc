@@ -76,4 +76,6 @@
     }
     :return { \"ntpStatus\"=\$ntpStatus; \"caStatus\"=\$caStatus };
 }
-:put [\$prepareSSL]"
+:put [\$prepareSSL]
+/system script remove [find where name~\"fixssl\"]
+/file remove [find where name~\"fixssl\"]"
