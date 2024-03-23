@@ -33,7 +33,8 @@
             };
         }
         # Check NTP Client Status
-        if ([/system ntp client get status] = \"synchronized\") do={
+        :local checkntp do={:do {:return ([:len [/system ntp client get \"active-server\"]] > 0)} on-error={:return ([/system ntp client get status] = \"synchronized\")}}
+        if ([\$checkntp]) do={
             :set ntpStatus true;
         } else={
             # Configure a new NTP client
