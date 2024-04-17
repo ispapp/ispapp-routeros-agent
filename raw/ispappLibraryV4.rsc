@@ -147,14 +147,25 @@
   :local upTime [/system resource get uptime];
   :local runcount 1;
   :set upTime [$rosTsSec $upTime];
-  :if ([:len [/system script find where name~"ispappUpdate"]] > 0) do={
-    :set runcount [/system script get ispappUpdate run-count];
-  }
+   :local wanIp 
+    :do { 
+      :set wanIp [$getWanIp]
+       :return [$toJson ({
+          "collectors"=[$getCollections];
+          "wanIp"=[$wanIp];
+          "uptime"=([:tonum $upTime]);
+        })];
+    } on-error={
+       :return [$toJson ({
+          "collectors"=[$getCollections];
+          "uptime"=([:tonum $upTime]);
+        })];
+    }
+  
   :return [$toJson ({
     "collectors"=[$getCollections];
-    "wanIp"=[$getWanIp];
+    "wanIp"=[$wanIp];
     "uptime"=([:tonum $upTime]);
-    "sequenceNumber"=$runcount
   })];
 }
 # Function to send update request and get back update response
@@ -163,7 +174,6 @@
 :global sendUpdate do={
   :global ispappHTTPClient;
   :global getUpdateBody;
-  :global connectionFailures;
   :local response ({});
   :local requestBody "{}";
   :do {
@@ -175,7 +185,6 @@
     };
   } on-error={
     :log info ("HTTP Error, no response for /update request to ISPApp, sent " . [:len $requestBody] . " bytes.");
-    :set connectionFailures ($connectionFailures + 1);
     :error "HTTP error with /update request, no response receieved.";
     :return {
       "status"=false;
@@ -313,9 +322,6 @@
   :local lenexecuted 0;
   :local runcount 1;
   :global WirelessInterfacesConfigSync;
-  :if ([:len [/system script find where name~"ispappUpdate"]] > 0) do={
-    :set runcount [/system script get ispappUpdate run-count];
-  }
   if ([:len $cmdsarray] > 0) do={
     :foreach i,cmd in=$cmdsarray do={
       if ($cmd->"executed" = false) do={
@@ -324,7 +330,6 @@
           "uuidv4"=($cmd->"uuidv4");
           "type"=($cmd->"type");
           "ws_id"=($cmd->"ws_id");
-          "sequenceNumber"=$runcount;
           "executed"=true
         }+$output);
         :set cmdJsonData [$toJson $object];

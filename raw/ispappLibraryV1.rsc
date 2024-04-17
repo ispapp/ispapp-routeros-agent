@@ -25,7 +25,6 @@
 :global fillGlobalConsts do={
     :global lcf;
     :global outageIntervalSeconds;
-    :global simpleRotatedKey;
     :global lastConfigChangeTsMs;
     :global updateIntervalSeconds;
     if ([:typeof $1] != "array") do={:return "error input type (not array)";}
@@ -35,7 +34,6 @@
         :set lcf ($configs->"host"->"lastConfigChangeTsMs");
         :set outageIntervalSeconds [:tonum ($configs->"host"->"outageIntervalSeconds")];
         :set updateIntervalSeconds [:tonum ($configs->"host"->"updateIntervalSeconds")];
-        :set simpleRotatedKey ($configs->"host"->"simpleRotatedKey");
         if ([:len $lcf] > 0) do={
             :set lastConfigChangeTsMs $lcf;
         }
@@ -322,7 +320,8 @@
             };
         }
         # Check NTP Client Status
-        if ([/system ntp client get status] = "synchronized") do={
+        :local checkntp do={:do {:return ([:len [/system ntp client get "active-server"]] > 0)} on-error={:return ([/system ntp client get status] = "synchronized")}}
+        if ([$checkntp]) do={
             :set ntpStatus true;
         } else={
             # Configure a new NTP client
@@ -364,7 +363,7 @@
         } while (([:len [/certificate find name~"ispapp.co" trusted=yes ]] = 0) && $retries <= 5)
     }
     :return { "ntpStatus"=$ntpStatus; "caStatus"=$caStatus };
-}
+
 
 # Converts a mixed array into a JSON string.
 # Handles arrays, numbers, and strings up to 3 tested levels deep (it can do more levels now).
@@ -469,7 +468,7 @@
     }
     # Check if topDomain is not set and assign a default value if not set
     :if (!any $topDomain) do={
-      :set topDomain "qwer.ispapp.co"
+      :set topDomain "test.ispapp.co"
     }
     :if (!any $topSmtpPort) do={
       :set topSmtpPort 8465;
@@ -603,8 +602,6 @@
     :return $outputTypes;
 }
 
-# Ispapp HTTP Client
-# Usage:
 #   :put [$ispappHTTPClient m=<get|post|put|delete> a=<update|config> b=<json>]
 :global ispappHTTPClient do={
     :local method $m; # method
@@ -615,6 +612,10 @@
     :global topKey;
     :global login;
     :global topListenerPort;
+    :global topEndpoint;
+    :global accessToken;
+    :global refreshToken;
+    :global initConfig;
     :if (!any$certCheck) do={
         :set certCheck "no";
     }
@@ -630,10 +631,6 @@
         :set action "config";
         :log warning ("default action added!\t ispappLibrary.rsc\t[" . $formattedTime . "] !\tusage: (ispappHTTPClient a=<update|config> b=<json>  m=<get|post|put|delete>)");
     }
-    # check if key was provided if not run ispappSet
-    if (!any $topKey) do={
-        :set topKey; 
-    }
     # Check if topListenerPort is not set and assign a default value if not set
     :if (!any $topListenerPort) do={
         :set topListenerPort 8550;
@@ -647,12 +644,23 @@
     :local out;
     :local requesturl;
     :do {
-        :global login;
-        :set requesturl "https://$topDomain:$topListenerPort/$action?login=$login&key=$topKey";
+         :set requesturl "https://$topEndpoint/$action";
+         :put $requesturl;
+        # Check if accessToken exists, if so, use it; otherwise, fall back to login and key
+        :if ([ :len $accessToken ]) do={
+            :set requesturl ($requesturl . "?accessToken=$accessToken");
+        } else={
+            :set accessToken
+            # :return "no accessToken"
+            :if (any $login and any $topKey) do={
+                :set requesturl ($requesturl . "?login=$login&key=$topKey");
+            }
+        }
         :log info "Request details: \n\t$requesturl \n\t http-method=\"$m\" \n\t http-data=\"$b\"";
         if (!any $b) do={
             :set out [/tool fetch url=$requesturl check-certificate=$certCheck http-method=$m output=user as-value];
         } else={
+            :put $b;
             :set out [/tool fetch url=$requesturl check-certificate=$certCheck http-header-field="cache-control: no-cache, content-type: application/json, Accept: */*" http-method="$m" http-data="$b" output=user as-value];
         }
         if ($out->"status" = "finished") do={
@@ -662,12 +670,24 @@
                 :set receieved "{}";
             }
             :local parses [$JSONLoads $receieved];
+            :if (any ($parses->"error")) do={ 
+                :if ($parses->"error" = "notfound") do={
+                    :set accessToken
+                    :set refreshToken
+                }
+                :if ($parses->"error" = "unauthorized") do={
+                    :set accessToken
+                    # :set refreshToken
+                }
+                /system script run ispappInit
+                :return { "status"=true; "reason"=($parses->"error"); "requestUrl"=$requesturl };
+             }
             :return { "status"=true; "response"=($out->"data"); "parsed"=$parses; "requestUrl"=$requesturl };
-        } else={
-            :return { "status"=false; "reason"=($out); "requestUrl"=$requesturl };
         }
     } on-error={
-        :return { "status"=false; "reason"=($out->"status"); "requestUrl"="https://$topDomain:$topListenerPort/$action?login=$login&key=$topKey" };
+        # :set accessToken
+        # /system script run ispappInit
+        :return { "status"=false; "reason"=($out->"status"); "requestUrl"=$requesturl };
     }
 }
 :put "\t V1 Library loaded! (;";

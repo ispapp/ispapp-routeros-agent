@@ -5,16 +5,10 @@
 :global isSend 1;
 :global topKey;
 :global topDomain;
-:global topClientInfo;
-:global topListenerPort;
-:global topServerPort;
 :global topSmtpPort;
 :global WirelessInterfacesConfigSync;
 :global TopVariablesDiagnose;
 :global prepareSSL;
-:global login;
-:global librariesurl "https://api.github.com/repos/ispapp/ispapp-routeros-agent/commits?sha=major-refactor&path=ispappLibrary.rsc&per_page=1";
-:global librarylastversion;
 # setup email server
 if (any$topDomain) do={
   :local setserver [:parse "/tool e-mail set server=(\$1)"]
@@ -43,51 +37,7 @@ if (any$topSmtpPort) do={
 :if ([:len [/system script find where name="ispapp_credentials"]]) do={
   /system script run ispapp_credentials
 }
-:global librayupdateexist false;
-:global getVersion;
-# Function to get library versions
-:if  (!any$getVersion) do={
-  :global getVersion do={
-    :global librariesurl;
-    :local res ([/tool fetch url="$librariesurl" mode=https output=user as-value]->"data"); :local shaindex [:find $res "\"sha\":\""];
-    :local version [:pick $res ($shaindex + 7) ($shaindex + 47)];
-    :log debug "found library version: $version"
-    :return $version;
-  }
-}
-# check library version
-:do {
-  :put "Fetch the last version of ispapp Libraries!"
-  :local currentVersion [$getVersion];
-  :put "currentVersion: $currentVersion";
-  :put "librarylastversion: $librarylastversion";
-  :if ((any $currentVersion) && ([:len $currentVersion] > 30)) do={
-    :local isupdate (!any[:find $currentVersion $librarylastversion] || ([:len $librarylastversion] = 0));
-    :put "Is there an update: $isupdate";
-    :if ($isupdate) do={
-      :set librarylastversion $currentVersion;
-      :put "updating libraries to version $currentVersion! \n\r (last version was $librarylastversion)";
-      :set librayupdateexist true;
-    }
-  }
-} on-error={
-  :log error "error accured while fetching the last release of library!";
-}
-# start loading libraries from major-refactor branch.
-:if (([:len [/system script find where name~"ispappLibrary"]] = 0) || $librayupdateexist) do={
-  :put "Download and import ispappLibrary.rsc"
-  :do {
-    /tool fetch url="https://raw.githubusercontent.com/ispapp/ispapp-routeros-agent/major-refactor/ispappLibrary.rsc" dst-path="ispappLibrary.rsc"
-    /system script remove [find where name~"ispappLibrary"]
-    /import ispappLibrary.rsc
-    :delay 3s
-    # load libraries
-    :foreach lib in=[/system script find name~"ispappLibrary"] do={ /system script run $lib; }
-    :set librayupdateexist false;
-  } on-error={:put "Error fetching ispappLibrary.rsc"; :delay 1s}
-} else={
-  :foreach id in=[/system script find where name~"ispappLibrary"] do={ /system script run $id } 
-}
+
 #----------------- update credentials
 :global savecredentials;
 :if (any $savecredentials) do={
