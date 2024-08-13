@@ -847,40 +847,6 @@
     if ([:len [/system script job find script~\"ispappUpdate\"]] > 0) do={
         :return {\"status\"=false; \"message\"=\"waiting update to finish first!\"};
     }
-    # :local getConfig do={
-    #     # get configuration from the server
-    #     :do {
-    #         :global ispappHTTPClient;
-    #         :global fillGlobalConsts;
-    #         :local res;
-    #         :local i 0;
-    #         # :if ([\$ispappHTTPClient m=\"get\" a=\"update\"]->\"status\" = false) do={
-    #         #     :return { \"response\"=\"first time config of server error\"; \"status\"=false };
-    #         # }
-    #         :while (([:len [:find [:tostr \$res] \"Err.Raise\"]] != 0 || [:len \$res] = 0) && \$i < 3) do={
-    #             :set res ([\$ispappHTTPClient m=\"get\" a=\"config\"]->\"parsed\");
-    #             :delay 1s;
-    #             :set i (\$i + 1);
-    #         }
-    #         if ([:len [:find [:tostr \$res] \"Err.Raise\"]] != 0) do={
-    #             # check id json received is valid and redy to be used
-    #             :log error \"error while getting config (Err.Raise fJSONLoads)\";
-    #             :return {\"status\"=false; \"message\"=\"error while getting config (Err.Raise fJSONLoads)\"};
-    #         } else={
-    #             :if (\$res->\"host\"->\"Authed\" != true) do={
-    #                 :log error [:tostr \$res];
-    #                 :return {\"status\"=false; \"message\"=\$res};
-    #             } else={
-    #                 :log info \"check id json received is valid and ready to be used with response: \$res\";
-    #                 :put [\$fillGlobalConsts \$res];
-    #                 :return { \"response\"=\$res; \"status\"=true };
-    #             }
-    #         }
-    #     } on-error={
-    #         :log error \"error while getting config (Err.Raise fJSONLoads)\";
-    #         :return {\"status\"=false; \"message\"=\"error while getting config\"};
-    #     }
-    # };
     :local getLocalWlans do={
         # collect all wireless interfaces from the system
         # format them to be sent to server
@@ -1162,7 +1128,7 @@
         } while (([:len [/certificate find name~\"ispapp.co\" trusted=yes ]] = 0) && \$retries <= 5)
     }
     :return { \"ntpStatus\"=\$ntpStatus; \"caStatus\"=\$caStatus };
-
+}
 
 # Converts a mixed array into a JSON string.
 # Handles arrays, numbers, and strings up to 3 tested levels deep (it can do more levels now).
