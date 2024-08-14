@@ -17,27 +17,27 @@
     :local httpResponse [\$ispappHTTPClient a=\$refreshEndpoint m=get];
     :if ((\$httpResponse->\"status\" = true) && ([:len (\$httpResponse->\"parsed\")] > 0 ) ) do={
         :if (\$parses->\"error\" = \"unauthorized\") do={
-                :set accessToken
-                :set refreshToken
-                /system scheduler enable ispappInit;
-                /system scheduler disable ispappConfig;
-                /system scheduler disable ispappUpdate;
-                } else={
-                :local responseData (\$httpResponse->\"parsed\");
-                :set accessToken (\$responseData->\"accessToken\");
-                :set refreshToken (\$responseData->\"refreshToken\");
-                :if (([ :len \$accessToken ] > 0) && ([ :len \$refreshToken ] > 0)) do={
-                    :put \"refresh\"
+            :set accessToken \"\";
+            :set refreshToken \"\";
+            /system scheduler enable ispappInit;
+            /system scheduler disable ispappConfig;
+            /system scheduler disable ispappUpdate;
+        } else={
+            :local responseData (\$httpResponse->\"parsed\");
+            :set accessToken (\$responseData->\"accessToken\");
+            :set refreshToken (\$responseData->\"refreshToken\");
+            :if (([ :len \$accessToken ] > 0) && ([ :len \$refreshToken ] > 0)) do={
+                :put \"refresh\"
                 :log info (\"accessToken refreshed\");
                 /system scheduler disable ispappInit;
                 /system scheduler enable ispappConfig;
                 /system scheduler enable ispappUpdate;
-                        }
+            }
         }
     } else={
         :log error (\"accessToken not refreshed\");
         :set refreshToken (\$accessToken)
-        :set accessToken ;
+        :set accessToken \"\";
         /system scheduler enable ispappInit;
         /system scheduler disable ispappConfig;
         /system scheduler disable ispappUpdate;
@@ -96,5 +96,5 @@
 }
 
 # Initialize ISPApp
-[\$initConfig];
+:put [\$initConfig];
 "
