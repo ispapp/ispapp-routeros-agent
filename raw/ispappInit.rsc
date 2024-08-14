@@ -12,7 +12,7 @@
     :global accessToken;
     :global refreshToken;
     :global ispappHTTPClient;
-    :set accessToken ($refreshToken)
+    :set accessToken ($refreshToken);
     :local httpResponse [$ispappHTTPClient a=$refreshEndpoint m=get];
     :if (($httpResponse->"status" = true) && ([:len ($httpResponse->"parsed")] > 0 ) ) do={
         :if ($parses->"error" = "unauthorized") do={
@@ -41,7 +41,7 @@
         /system scheduler disable ispappConfig;
         /system scheduler disable ispappUpdate;
     }
-}
+};
 
 # Function to initialize ISPApp
 :local initConfig do={

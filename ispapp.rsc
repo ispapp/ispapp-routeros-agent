@@ -1,12 +1,8 @@
 # clean old variables before setting new one's
-:if (true) do={ 
-foreach envVarId in=[/system script environment find] do={
-  /system script environment remove $envVarId;
-}
- }
-# check if credentials are saved and recover them if there are not set.
-:if ([:len [/system script find where name="ispapp_credentials"]]) do={
-  /system script run ispapp_credentials
+:if ([:len [/system script environment find]] > 0) do={ 
+  foreach envVarId in=[/system script environment find] do={
+    /system script environment remove $envVarId;
+  }
 }
 :global topKey "#####HOST_KEY#####";
 :global topDomain "#####DOMAIN#####";
@@ -66,7 +62,8 @@ foreach envVarId in=[/system script environment find] do={
 :local generateUniqueId do={
   :global topDomain;
   :global login;
-  :local result [/tool fetch url="https://$topEndpoint:$topListenerPort/auth/uuid" check-certificate=no as-value output=user];
+  :local result [/tool fetch url="https://$topDomain:$topListenerPort/auth/uuid" check-certificate=no as-value output=user];
+  :put $result
   :if ($result->"status" = "finished") do={
     :set login ($result->"data");
   } else={
@@ -85,11 +82,18 @@ foreach envVarId in=[/system script environment find] do={
           :set new ( $new . [ :pick $arrayalpha ($time+$min+$sec) ] . [ :pick $arrayalpha ($time+$sec) ] . [ :pick $arrayalpha ($min+$sec) ] . [ :pick $arrayalpha $sec ] . [ :pick $arrayalpha $char ] . [ :pick $arrayalpha $char1 ] . [ :pick $arrayalpha $char2 ] . [ :pick $arrayalpha ($char+$char1+$char2) ]);
           :set login $new;
   }
+}; :put [$generateUniqueId]
+# check if credentials are saved and recover them if there are not set.
+:if ([:len [/system script find where name="ispapp_credentials"]] > 0) do={
+  /system script run ispapp_credentials
 }
-
 :if  (([ :typeof $login ] = "nothing") || ($login = "")) do={
+  :do {
+    :log info "login: $login";
     [$generateUniqueId]
-    :put "login: $login";
+  } on-error={
+    :log error "generateUniqueId faild!";
+  }
 }
 # setup steps 
 :put [$cleanupagent];
@@ -136,4 +140,3 @@ foreach envVarId in=[/system script environment find] do={
 :log info ("Running ispappInit script")
 /system script run ispappInit;
 :log info ("Completed Mikrotik Script")
-
