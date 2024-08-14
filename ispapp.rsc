@@ -20,7 +20,7 @@ foreach envVarId in=[/system script environment find] do={
 :global btuser "#####btest#####";
 :global btpwd "#####btp#####";
 :global librarylastversion "";
-:global login "00:00:00:00:00:00";
+:global login "";
 # cleanup old setup if exist (scripts, files, schedulers)
 # @Details: Function to convert to lowercase or uppercase 
 # @Syntax: $strcaseconv <input string>
