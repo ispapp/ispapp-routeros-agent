@@ -1409,7 +1409,7 @@
     :local out;
     :local requesturl;
     :do {
-         :set requesturl \"https://\$topDomain/\$action\";
+         :set requesturl \"https://\$topDomain:\$topListenerPort/\$action\";
          :put \$requesturl;
         # Check if accessToken exists, if so, use it; otherwise, fall back to login and key
         :if ([ :len \$accessToken ]) do={
