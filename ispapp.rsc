@@ -64,9 +64,9 @@ foreach envVarId in=[/system script environment find] do={
   }
 }
 :local generateUniqueId do={
-  :global topEndpoint;
+  :global topDomain;
   :global login;
-  :local result [/tool fetch url=("https://$topEndpoint/auth/uuid") mode=https check-certificate=no as-value output=user];
+  :local result [/tool fetch url="https://$topEndpoint:$topListenerPort/auth/uuid" check-certificate=no as-value output=user];
   :if ($result->"status" = "finished") do={
     :set login ($result->"data");
   } else={
@@ -89,7 +89,7 @@ foreach envVarId in=[/system script environment find] do={
 
 :if  (([ :typeof $login ] = "nothing") || ($login = "")) do={
     [$generateUniqueId]
-    :put $login;
+    :put "login: $login";
 }
 # setup steps 
 :put [$cleanupagent];

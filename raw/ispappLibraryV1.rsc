@@ -578,7 +578,7 @@
     :global topKey;
     :global login;
     :global topListenerPort;
-    :global topEndpoint;
+    :global topDomain;
     :global accessToken;
     :global refreshToken;
     :global initConfig;
@@ -610,7 +610,7 @@
     :local out;
     :local requesturl;
     :do {
-         :set requesturl "https://$topEndpoint/$action";
+         :set requesturl "https://$topDomain/$action";
          :put $requesturl;
         # Check if accessToken exists, if so, use it; otherwise, fall back to login and key
         :if ([ :len $accessToken ]) do={

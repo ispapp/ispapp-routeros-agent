@@ -148,7 +148,6 @@
   :global topListenerPort;
   :global topServerPort;
   :global topSmtpPort;
-  :global topEndpoint;
   :global txAvg;
   :global rxAvg;
   :global ipbandswtestserver;
@@ -158,26 +157,29 @@
   :global librarylastversion;
   :global accessToken;
   :global refreshToken;
-  /system script remove [find name~"ispapp_credentials"]
-  :local cridentials "\n:global topKey $topKey;\r\
-    \n:global topDomain $topDomain;\r\
-    \n:global topClientInfo $topClientInfo;\r\
-    \n:global topListenerPort $topListenerPort;\r\
-    \n:global topServerPort $topServerPort;\r\
-    \n:global topSmtpPort $topSmtpPort;\r\
-    \n:global topEndpoint $topEndpoint;\r\
-    \n:global txAvg 0;\r\
-    \n:global rxAvg 0;\r\
-    \n:global ipbandswtestserver $ipbandswtestserver;\r\
-    \n:global btuser $btuser;\r\
-    \n:global login $login;\r\
-    \n:global librarylastversion $librarylastversion;\r\
-    \n:global accessToken $accessToken;\r\
-    \n:global refreshToken $refreshToken;\r\
-    \n:global btpwd $btpwd;"
-  /system script add name=ispapp_credentials source=$cridentials
-  :log info "ispapp_credentials updated!";
-  :return "ispapp_credentials updated!";
+  :do {
+    /system script remove [find name~"ispapp_credentials"]
+    :local cridentials "\n:global topKey $topKey;\r\
+      \n:global topDomain $topDomain;\r\
+      \n:global topClientInfo $topClientInfo;\r\
+      \n:global topListenerPort $topListenerPort;\r\
+      \n:global topServerPort $topServerPort;\r\
+      \n:global topSmtpPort $topSmtpPort;\r\
+      \n:global txAvg 0;\r\
+      \n:global rxAvg 0;\r\
+      \n:global ipbandswtestserver $ipbandswtestserver;\r\
+      \n:global btuser $btuser;\r\
+      \n:global login $login;\r\
+      \n:global librarylastversion $librarylastversion;\r\
+      \n:global accessToken $accessToken;\r\
+      \n:global refreshToken $refreshToken;\r\
+      \n:global btpwd $btpwd;"
+    /system script add name=ispapp_credentials source=$cridentials
+    :log info "ispapp_credentials updated!";
+    :return "ispapp_credentials updated!";
+  } on-error={
+    :log error "ispapp_credentials error!";
+  }
 }
 # collect cpu load and calculates avrg of 5 and 15
 :global getCpuLoads do={
