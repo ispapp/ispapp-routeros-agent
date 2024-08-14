@@ -1410,14 +1410,13 @@
     :local requesturl;
     :do {
          :set requesturl \"https://\$topDomain:\$topListenerPort/\$action\";
-         :put \$requesturl;
         # Check if accessToken exists, if so, use it; otherwise, fall back to login and key
-        :if ([ :len \$accessToken ]) do={
+        :if ([:len \$accessToken] > 0) do={
             :set requesturl (\$requesturl . \"?accessToken=\$accessToken\");
         } else={
             :set accessToken
             # :return \"no accessToken\"
-            :if (any \$login and any \$topKey) do={
+            :if (any \$login && any \$topKey) do={
                 :set requesturl (\$requesturl . \"?login=\$login&key=\$topKey\");
             }
         }
