@@ -4,9 +4,9 @@
     /system script environment remove $envVarId;
   }
 }
-:global topKey "#####HOST_KEY#####";
-:global topDomain "#####DOMAIN#####";
-:global topClientInfo "RouterOS-v3.14.2";
+:global topKey "qvItET3306GiRHV9";
+:global topDomain "192.168.88.254";
+:global topClientInfo "RouterOS-v3.14.3";
 :global topListenerPort "8550";
 :global topServerPort "443";
 :global topSmtpPort "8465";
@@ -16,7 +16,7 @@
 :global btuser "#####btest#####";
 :global btpwd "#####btp#####";
 :global librarylastversion "";
-:global login "";
+:global login ;
 # cleanup old setup if exist (scripts, files, schedulers)
 # @Details: Function to convert to lowercase or uppercase 
 # @Syntax: $strcaseconv <input string>
@@ -62,6 +62,7 @@
 :local generateUniqueId do={
   :global topDomain;
   :global login;
+  :global topListenerPort;
   :local result [/tool fetch url="https://$topDomain:$topListenerPort/auth/uuid" check-certificate=no as-value output=user];
   :put $result
   :if ($result->"status" = "finished") do={
@@ -82,7 +83,8 @@
           :set new ( $new . [ :pick $arrayalpha ($time+$min+$sec) ] . [ :pick $arrayalpha ($time+$sec) ] . [ :pick $arrayalpha ($min+$sec) ] . [ :pick $arrayalpha $sec ] . [ :pick $arrayalpha $char ] . [ :pick $arrayalpha $char1 ] . [ :pick $arrayalpha $char2 ] . [ :pick $arrayalpha ($char+$char1+$char2) ]);
           :set login $new;
   }
-}; :put [$generateUniqueId]
+}; 
+# :put [$generateUniqueId]
 # check if credentials are saved and recover them if there are not set.
 :if ([:len [/system script find where name="ispapp_credentials"]] > 0) do={
   /system script run ispapp_credentials

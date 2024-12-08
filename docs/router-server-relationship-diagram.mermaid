@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant R as MikroTik Router
+    participant S as ISPApp Server
+
+    R->>S: Initialize (ispappInit.rsc)
+    S-->>R: Provide Authentication Tokens
+
+    loop Regular Interval
+        R->>S: Send Configuration (ispappConfig.rsc)
+        S-->>R: Sync Configuration Data
+    end
+
+    loop Regular Interval
+        R->>S: Check for Updates (ispappUpdate.rsc)
+        S-->>R: Provide Updates/Commands
+        R->>R: Execute Commands
+    end
+
+    R->>S: Send Device Status
+    S-->>R: Acknowledge
+
+    Note over R,S: Continuous Monitoring and Management

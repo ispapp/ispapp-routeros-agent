@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant R as Router
+    participant S as Server
+    participant A as Admin
+
+    Note over R,S: Initial Setup Process
+    R->>S: Register with key and generated UUID
+    S->>A: Notification of new router registration
+    A->>S: Validate and approve router
+    S->>R: Send initial accessToken and refreshToken
+
+    Note over R,S: Normal Operation
+    R->>S: Request with accessToken
+    alt Valid accessToken
+        S->>R: Successful Response
+    else Invalid or Expired accessToken
+        S->>R: 401 Unauthorized
+        R->>S: Request new accessToken with refreshToken
+        alt Valid refreshToken
+            S->>R: New accessToken
+            R->>S: Retry original request with new accessToken
+            S->>R: Successful Response
+        else Invalid refreshToken
+            S->>R: 401 Unauthorized
+            Note over R,S: User must re-authenticate
+        end
+    end
