@@ -6,8 +6,9 @@
   :global submitCmds;
   :global execActions;
   :global executeCmds;
-  :if (any$sendUpdate) do={
+  :if (any $sendUpdate) do={
     :do {
+      :put "sendUpdate found!";
       :local updates [$sendUpdate];
       :if ($updates->"status") do={
         :local response ($updates->"output"->"parsed");

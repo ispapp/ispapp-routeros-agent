@@ -412,30 +412,26 @@
 }
 # Function to back up router config and sent result back vi an email
 :global ConfigBackup do={
-  :global rosTimestringSec;
   :do {
-      # get the unix timestamp
-      :global lastLocalConfigurationBackupSendTs;
-      # non documented typeof value of nothing happens when you delete an environment variable, RouterOS 6.49.7
-      if ([:typeof $lastLocalConfigurationBackupSendTs] = "nil" || [:typeof $lastLocalConfigurationBackupSendTs] = "nothing") do={
-        # set first value
-        :set lastLocalConfigurationBackupSendTs 0;
-      }
-      :local currentTimestring ([/system clock get date] . " " . [/system clock get time]);
-      :local currentTs [$rosTimestringSec $currentTimestring];
-      :local lastBackupDiffSec ($currentTs - $lastLocalConfigurationBackupSendTs);
-      #:log info ("lastBackupDiffSec", $lastBackupDiffSec);
-      if ($lastBackupDiffSec > 60 * 60 * 12) do={
         # send a new local configuration backup every 12 hours
         :log info ("sending new local configuration backup");
         :execute {
           # set last backup time
-          :local lastLocalConfigurationBackupSendTimestring ([/system clock get date] . " " . [/system clock get time]);
-          :global lastLocalConfigurationBackupSendTs [$rosTimestringSec $lastLocalConfigurationBackupSendTimestring];
+          :local lastLocalConfigurationBackupSendTs ([/system clock get date] . " " . [/system clock get time]);
           # send backup
           # run the script and place the output in a known file
-          :local scriptJobId [:execute script={/export terse;} file=ispappBackup.txt];
-          # wait 10 minutes for the export to finish
+          :local scriptJobId;
+          :do {
+            :set scriptJobId [:execute script={/export terse;} file=ispappBackup.txt];
+          } on-error={
+            :log info "Error executing backup script";
+            :return;
+          }
+          :do {
+            /tool e-mail send server=($topDomain) from=($login . "@" . $simpleRotatedKey . ".ispapp.co") to=("backup@" . $topDomain) port=($topSmtpPort) file="ispappBackup.txt" subject="c" body="{}";
+          } on-error={
+            :log error "Failed to send backup email.";
+          }
           :delay 600s;
           :global login;
           :global simpleRotatedKey;
@@ -443,11 +439,11 @@
           :global topSmtpPort;
           /tool e-mail send server=($topDomain) from=($login . "@" . $simpleRotatedKey . ".ispapp.co") to=("backup@" . $topDomain) port=($topSmtpPort) file="ispappBackup.txt" subject="c" body="{}";
         };
-      }
   } on-error={
     :log info ("ISPApp, error with configuration backups.");
   }
 };
+
 
 # Function to get system version and compare to input version
 # usage:
@@ -481,33 +477,4 @@
   }
 };
 # convert buit-time to timestamp
-:global getTimestamp do={
-  # Nov/09/2023 07:45:06 - input ›
-  :if (!any$1) do={:return 0;}
-  :global strcaseconv;
-  :local pYear [:pick $1 7 11];
-  :local pday [:pick $1 4 6];
-  :local pmonth [:pick $1 0 3];
-  :local phour [:pick $1 12 14];
-  :local pminute [:pick $1 15 17];
-  :local psecond [:pick $1 18 20];
-  :local monthNames [:toarray "jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec"];
-  :local monthDays (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
-  :local monthName ([$strcaseconv $pmonth]->"lower");
-  :local monthNum ([:find $monthNames $monthName]);
-  :put ($monthNum);
-  :local month 0;
-  :foreach i in=[:pick $monthDays 0 $monthNum] do={ :set month ($month + ([:tonum $1] * 86400)) };
-  :local day (([:tonum $pday] - 1) * 86400)
-  :local years ([:tonum $pYear] - 1970);
-  :local leapy (([:tonum $pYear] - 1972) / 4);
-  :local noleapy ($years - $leapy)
-  if ((([:tonum $pYear] - 1970) % 4) = 2) do={
-    :set leapy ($leapy - 1);
-    if (($monthNum + 1) >= 2) do={ :set month ($month - 86400); }
-  } else={ :set noleapy ($noleapy - 1) }
-  :set years (($leapy * 31622400) + ($noleapy * 31536000))
-  :local time ((([:tonum $phour] - 1)*3600)+(([:tonum $pminute] - 1)*60)+([:tonum $psecond]))
-  :return ($month + $day + $years + $time);
-}
 :put "\t V4 Library loaded! (;";

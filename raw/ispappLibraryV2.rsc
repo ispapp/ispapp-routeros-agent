@@ -1,66 +1,6 @@
 
 # for checking purposes
 :global ispappLibraryV2 "ispappLibraryV2 loaded";
-# Function to get timestamp in seconds, minutes, hours, or days
-# save it in a global variable to get diff between it and the current timestamp.
-# synctax:
-#       :put [$getTimestamp <s|m|d|h> <your saved timestamp variable to get diff>]
-:global getTimestamp do={
-    :local format $1;
-    :local out;
-    :local time2parse [:timestamp]
-    :local w [:find $time2parse "w"]
-    :local d [:find $time2parse "d"]
-    :local c [:find $time2parse ":"]
-    :local p [:find $time2parse "."]
-    :local weeks [:pick $time2parse 0 [$w]]
-    :set $weeks [:tonum ($weeks * 604800)]
-    :local days [:pick $time2parse ($w + 1) $d]
-    :set days [:tonum ($days * 86400)]
-    :local hours [:pick $time2parse ($d + 1) $c]
-    :set hours [:tonum ($hours * 3600)]
-    :local minutes [:pick $time2parse ($c + 1) [:find $time2parse ($c + 3)]]
-    :set minutes [:tonum ($minutes * 60)]
-    :local seconds [:pick $time2parse ($c + 4) $p]
-    :local rawtime ($weeks+$days+$hours+$minutes+$seconds)
-    :local current ($weeks+$days+$hours+$minutes+$seconds)
-    :global lastTimestamp $lastTimestamp;
-    if ([:typeof $2] = "num") do={
-        :set lastTimestamp $2;
-    }
-    :if ($format = "s") do={
-      :local diff ($rawtime - $lastTimestamp);
-      :set out { "current"=$current; "diff"=$diff;}
-      :global lastTimestamp $rawtime;
-      :return $out;
-    } else={
-      :if ($format = "m") do={
-           :local diff (($rawtime - $lastTimestamp)/60);
-           :set out { "current"=$current; "diff"=$diff }
-           :global lastTimestamp $rawtime;
-           :return $out;
-      } else={
-        :if ($format = "h") do={
-           :local diff (($rawtime - $lastTimestamp)/3600);
-           :set out { "current"=$current; "diff"=$diff }
-           :global lastTimestamp $rawtime;
-           :return $out;
-        } else={
-          :if ($format = "d") do={
-               :local diff (($rawtime - $lastTimestamp)/86400);
-               :set out { "current"=$current; "diff"=$diff }
-               :global lastTimestamp $rawtime;
-               :return $out;
-          } else={
-              :local diff ($rawtime - $lastTimestamp);
-              :set out { "current"=$current; "diff"=$diff }
-              :global lastTimestamp $rawtime;
-              :return $out;
-          }
-        }
-      }
-    }
-}
 # Function to get router board infos if exist;
 :global getRouterboard do={
   :do {
@@ -82,14 +22,13 @@
 :global getAllConfigs do={
     :do {
         :global getRouterboard;
-        :global rosTimestringSec;
         :global toJson;
         :global lastConfigChangeTsMs;
         :global getPublicIp;
         :global topClientInfo;
         :local data;
         :local resources [/system resource get];
-        :local osbuilddate [$rosTimestringSec ($resources->"build-time")];
+        :local osbuilddate ($resources->"build-time");
         :local interfaces ({});
         foreach k,v in=[/interface find] do={
             :local Name [/interface get $v name];
@@ -105,7 +44,7 @@
         :local hdwModelN "";
         :local hdwSerialN "";
         if ([:len $lastConfigChangeTsMs] = 0) do={
-          :set lastConfigChangeTsMs $osbuilddate;
+          :set lastConfigChangeTsMs 0;
         }
         :set data {
             "clientInfo"=$topClientInfo;
@@ -120,12 +59,12 @@
             "hostname"=[:tostr [/system identity get name]];
             "wirelessConfigured"=$1;
             "webshellSupport"=true;
-            "uptime"=$osbuilddate;
+            "uptime"=[:tonum [/system resource get uptime]];
             "firmwareUpgradeSupport"=true;
             "wirelessSupport"=true;
             "interfaces"=$interfaces;
             "security-profiles"=$2;
-            "lastConfigRequest"=[:tonum $lastConfigChangeTsMs];
+            "lastConfigRequest"=$lastConfigChangeTsMs;
             "bandwidthTestSupport"=true;
             "outsideIp"=[$getPublicIp];
             "usingWebSocket"=false;
