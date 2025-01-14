@@ -70,8 +70,8 @@
             :put \"refresh\"
             [\$refreshAccessToken]
           } 
-          :if (([ :len \$accessToken ] = 0 ) && ([ :len \$refreshToken ] = 0)) do={
-        :local httpResponse [\$ispappHTTPClient a=\$initConfigEndpoint m=get];
+        :if (([ :len \$accessToken ] = 0 ) && ([ :len \$refreshToken ] = 0)) do={
+        :local httpResponse [\$ispappHTTPClient a=\$initConfigEndpoint m=get b=\"{}\"];
         :put \$httpResponse
         :if ((\$httpResponse->\"status\" = true) && ([:len (\$httpResponse->\"parsed\")] ) ) do={
             :local responseData (\$httpResponse->\"parsed\");

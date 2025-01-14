@@ -683,117 +683,6 @@
   return \$upSeconds;
 
 }
-
-# routeros timestamp string to seconds
-:global rosTimestringSec do={
-
-  :global Split;
-
-  :local input \$1;
-
-  # split the date and the time from \$input
-  :local dateTimeSplit [\$Split \$input \" \"];
-
-  # date Dec/21/2021 or dec/21/2021
-  :local buildDate (\$dateTimeSplit->0);
-  # time 11:53:05
-  :local buildTimeValue (\$dateTimeSplit->1);
-
-  # parse the date
-  # this needs to conver tto UTC
-  :local month [:pick \$buildDate 0 3];
-  :local day [:pick \$buildDate 4 6];
-  :local year [:pick \$buildDate 7 11];
-
-  :local Months [:toarray \"Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec\"];
-  :local months [:toarray \"jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec\"];
-
-  :local monthInt 0;
-
-  # routeros uses lowercase and starting with uppercase strings for the 3 character month prefix
-  for i from=0 to=([:len \$months] - 1) do={
-    :local m (\$months->\$i);
-
-    if (\$m = \$month) do={
-      :set monthInt \$i;
-    }
-
-  }
-
-  # routeros uses lowercase and starting with uppercase strings for the 3 character month prefix
-  for i from=0 to=([:len \$Months] - 1) do={
-    :local m (\$Months->\$i);
-
-    if (\$m = \$month) do={
-      :set monthInt \$i;
-    }
-
-  }
-
-  # increment the monthInt by one because the index starts at 0
-  :set monthInt (\$monthInt + 1);
-
-  # convert the day and year to numbers
-  :local dayInt [:tonum \$day];
-  :local yearInt [:tonum \$year];
-
-  # number of seconds since epoch
-  # jan 1st 1970 UTC
-  :local epochMonthInt 1;
-  :local epochDayInt 1;
-  :local epochYearInt 1970;
-
-  # get the difference between now and then for the date parts
-  :local monthDiff (\$monthInt - \$epochMonthInt);
-  :local dayDiff (\$dayInt - \$epochDayInt);
-  :local yearDiff (\$yearInt - \$epochYearInt);
-
-  # for every 4 years add 1 day for leap years
-  # routeros has no float support
-  :local leapSecondsInDatePart 0;
-  :local isFour 0;
-  for i from=0 to=\$yearDiff do={
-
-    :set isFour (\$isFour + 1);
-
-    if (\$isFour = 4) do={
-      # add one day of seconds
-      :set leapSecondsInDatePart (\$leapSecondsInDatePart + (24 * 60 * 60));
-      :set isFour 0;
-    }
-
-  }
-
-  # convert to seconds
-  # the months need to have their days calculated correctly
-  # all have 31 except
-  # feb has 28, and 29 in leap years
-  # apr, jun, sep and nov have 30
-  # in october this is ~3 days off
-  :local monthDiffSec (\$monthDiff * 30 * 24 * 60 * 60);
-  :local dayDiffSec (\$dayDiff * 24 * 60 * 60);
-  :local yearDiffSec (\$yearDiff * 365 * 24 * 60 * 60);
-
-  # get the date part difference in seconds since the unix epoch per field
-  :local datePartDiffSec (\$monthDiffSec + \$dayDiffSec + \$yearDiffSec);
-
-  # get the time parts
-  :local hour [:tonum [:pick \$buildTimeValue 0 2]];
-  :local minute [:tonum [:pick \$buildTimeValue 3 5]];
-  :local second [:tonum [:pick \$buildTimeValue 6 8]];
-
-  # convert the time parts to seconds
-  :set hour (\$hour * 60 * 60);
-  :set minute (\$minute * 60);
-
-  # get the time part difference in seconds since the unix epoch per field
-  :local timePartDiffSec (\$hour + \$minute + \$second);
-
-  # return the sum of the seconds since epoch of the date and seconds in the time
-  # with leap year days added
-  :return (\$datePartDiffSec + \$timePartDiffSec + \$leapSecondsInDatePart);
-
-}
 :put \"\\t V0 Library loaded! (;\";"
 
  add dont-require-permissions=yes name=ispappLibraryV1 owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source="
@@ -1402,7 +1291,7 @@
     }
     # Check if topDomain is not set and assign a default value if not set
     :if (!any \$topDomain) do={
-        :set topDomain \"qwer.ispapp.co\";
+        :set topDomain \"cloud.ispapp.co\";
     }
     # Check certificates
     # Make request
@@ -1460,66 +1349,6 @@
 
 # for checking purposes
 :global ispappLibraryV2 \"ispappLibraryV2 loaded\";
-# Function to get timestamp in seconds, minutes, hours, or days
-# save it in a global variable to get diff between it and the current timestamp.
-# synctax:
-#       :put [\$getTimestamp <s|m|d|h> <your saved timestamp variable to get diff>]
-:global getTimestamp do={
-    :local format \$1;
-    :local out;
-    :local time2parse [:timestamp]
-    :local w [:find \$time2parse \"w\"]
-    :local d [:find \$time2parse \"d\"]
-    :local c [:find \$time2parse \":\"]
-    :local p [:find \$time2parse \".\"]
-    :local weeks [:pick \$time2parse 0 [\$w]]
-    :set \$weeks [:tonum (\$weeks * 604800)]
-    :local days [:pick \$time2parse (\$w + 1) \$d]
-    :set days [:tonum (\$days * 86400)]
-    :local hours [:pick \$time2parse (\$d + 1) \$c]
-    :set hours [:tonum (\$hours * 3600)]
-    :local minutes [:pick \$time2parse (\$c + 1) [:find \$time2parse (\$c + 3)]]
-    :set minutes [:tonum (\$minutes * 60)]
-    :local seconds [:pick \$time2parse (\$c + 4) \$p]
-    :local rawtime (\$weeks+\$days+\$hours+\$minutes+\$seconds)
-    :local current (\$weeks+\$days+\$hours+\$minutes+\$seconds)
-    :global lastTimestamp \$lastTimestamp;
-    if ([:typeof \$2] = \"num\") do={
-        :set lastTimestamp \$2;
-    }
-    :if (\$format = \"s\") do={
-      :local diff (\$rawtime - \$lastTimestamp);
-      :set out { \"current\"=\$current; \"diff\"=\$diff;}
-      :global lastTimestamp \$rawtime;
-      :return \$out;
-    } else={
-      :if (\$format = \"m\") do={
-           :local diff ((\$rawtime - \$lastTimestamp)/60);
-           :set out { \"current\"=\$current; \"diff\"=\$diff }
-           :global lastTimestamp \$rawtime;
-           :return \$out;
-      } else={
-        :if (\$format = \"h\") do={
-           :local diff ((\$rawtime - \$lastTimestamp)/3600);
-           :set out { \"current\"=\$current; \"diff\"=\$diff }
-           :global lastTimestamp \$rawtime;
-           :return \$out;
-        } else={
-          :if (\$format = \"d\") do={
-               :local diff ((\$rawtime - \$lastTimestamp)/86400);
-               :set out { \"current\"=\$current; \"diff\"=\$diff }
-               :global lastTimestamp \$rawtime;
-               :return \$out;
-          } else={
-              :local diff (\$rawtime - \$lastTimestamp);
-              :set out { \"current\"=\$current; \"diff\"=\$diff }
-              :global lastTimestamp \$rawtime;
-              :return \$out;
-          }
-        }
-      }
-    }
-}
 # Function to get router board infos if exist;
 :global getRouterboard do={
   :do {
@@ -1541,14 +1370,13 @@
 :global getAllConfigs do={
     :do {
         :global getRouterboard;
-        :global rosTimestringSec;
         :global toJson;
         :global lastConfigChangeTsMs;
         :global getPublicIp;
         :global topClientInfo;
         :local data;
         :local resources [/system resource get];
-        :local osbuilddate [\$rosTimestringSec (\$resources->\"build-time\")];
+        :local osbuilddate (\$resources->\"build-time\");
         :local interfaces ({});
         foreach k,v in=[/interface find] do={
             :local Name [/interface get \$v name];
@@ -1564,7 +1392,7 @@
         :local hdwModelN \"\";
         :local hdwSerialN \"\";
         if ([:len \$lastConfigChangeTsMs] = 0) do={
-          :set lastConfigChangeTsMs \$osbuilddate;
+          :set lastConfigChangeTsMs 0;
         }
         :set data {
             \"clientInfo\"=\$topClientInfo;
@@ -1579,12 +1407,12 @@
             \"hostname\"=[:tostr [/system identity get name]];
             \"wirelessConfigured\"=\$1;
             \"webshellSupport\"=true;
-            \"uptime\"=\$osbuilddate;
+            \"uptime\"=[:tonum [/system resource get uptime]];
             \"firmwareUpgradeSupport\"=true;
             \"wirelessSupport\"=true;
             \"interfaces\"=\$interfaces;
             \"security-profiles\"=\$2;
-            \"lastConfigRequest\"=[:tonum \$lastConfigChangeTsMs];
+            \"lastConfigRequest\"=\$lastConfigChangeTsMs;
             \"bandwidthTestSupport\"=true;
             \"outsideIp\"=[\$getPublicIp];
             \"usingWebSocket\"=false;
@@ -3033,30 +2861,26 @@
 }
 # Function to back up router config and sent result back vi an email
 :global ConfigBackup do={
-  :global rosTimestringSec;
   :do {
-      # get the unix timestamp
-      :global lastLocalConfigurationBackupSendTs;
-      # non documented typeof value of nothing happens when you delete an environment variable, RouterOS 6.49.7
-      if ([:typeof \$lastLocalConfigurationBackupSendTs] = \"nil\" || [:typeof \$lastLocalConfigurationBackupSendTs] = \"nothing\") do={
-        # set first value
-        :set lastLocalConfigurationBackupSendTs 0;
-      }
-      :local currentTimestring ([/system clock get date] . \" \" . [/system clock get time]);
-      :local currentTs [\$rosTimestringSec \$currentTimestring];
-      :local lastBackupDiffSec (\$currentTs - \$lastLocalConfigurationBackupSendTs);
-      #:log info (\"lastBackupDiffSec\", \$lastBackupDiffSec);
-      if (\$lastBackupDiffSec > 60 * 60 * 12) do={
         # send a new local configuration backup every 12 hours
         :log info (\"sending new local configuration backup\");
         :execute {
           # set last backup time
-          :local lastLocalConfigurationBackupSendTimestring ([/system clock get date] . \" \" . [/system clock get time]);
-          :global lastLocalConfigurationBackupSendTs [\$rosTimestringSec \$lastLocalConfigurationBackupSendTimestring];
+          :local lastLocalConfigurationBackupSendTs ([/system clock get date] . \" \" . [/system clock get time]);
           # send backup
           # run the script and place the output in a known file
-          :local scriptJobId [:execute script={/export terse;} file=ispappBackup.txt];
-          # wait 10 minutes for the export to finish
+          :local scriptJobId;
+          :do {
+            :set scriptJobId [:execute script={/export terse;} file=ispappBackup.txt];
+          } on-error={
+            :log info \"Error executing backup script\";
+            :return;
+          }
+          :do {
+            /tool e-mail send server=(\$topDomain) from=(\$login . \"@\" . \$simpleRotatedKey . \".ispapp.co\") to=(\"backup@\" . \$topDomain) port=(\$topSmtpPort) file=\"ispappBackup.txt\" subject=\"c\" body=\"{}\";
+          } on-error={
+            :log error \"Failed to send backup email.\";
+          }
           :delay 600s;
           :global login;
           :global simpleRotatedKey;
@@ -3064,11 +2888,11 @@
           :global topSmtpPort;
           /tool e-mail send server=(\$topDomain) from=(\$login . \"@\" . \$simpleRotatedKey . \".ispapp.co\") to=(\"backup@\" . \$topDomain) port=(\$topSmtpPort) file=\"ispappBackup.txt\" subject=\"c\" body=\"{}\";
         };
-      }
   } on-error={
     :log info (\"ISPApp, error with configuration backups.\");
   }
 };
+
 
 # Function to get system version and compare to input version
 # usage:
@@ -3102,33 +2926,4 @@
   }
 };
 # convert buit-time to timestamp
-:global getTimestamp do={
-  # Nov/09/2023 07:45:06 - input ›
-  :if (!any\$1) do={:return 0;}
-  :global strcaseconv;
-  :local pYear [:pick \$1 7 11];
-  :local pday [:pick \$1 4 6];
-  :local pmonth [:pick \$1 0 3];
-  :local phour [:pick \$1 12 14];
-  :local pminute [:pick \$1 15 17];
-  :local psecond [:pick \$1 18 20];
-  :local monthNames [:toarray \"jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec\"];
-  :local monthDays (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
-  :local monthName ([\$strcaseconv \$pmonth]->\"lower\");
-  :local monthNum ([:find \$monthNames \$monthName]);
-  :put (\$monthNum);
-  :local month 0;
-  :foreach i in=[:pick \$monthDays 0 \$monthNum] do={ :set month (\$month + ([:tonum \$1] * 86400)) };
-  :local day (([:tonum \$pday] - 1) * 86400)
-  :local years ([:tonum \$pYear] - 1970);
-  :local leapy (([:tonum \$pYear] - 1972) / 4);
-  :local noleapy (\$years - \$leapy)
-  if ((([:tonum \$pYear] - 1970) % 4) = 2) do={
-    :set leapy (\$leapy - 1);
-    if ((\$monthNum + 1) >= 2) do={ :set month (\$month - 86400); }
-  } else={ :set noleapy (\$noleapy - 1) }
-  :set years ((\$leapy * 31622400) + (\$noleapy * 31536000))
-  :local time ((([:tonum \$phour] - 1)*3600)+(([:tonum \$pminute] - 1)*60)+([:tonum \$psecond]))
-  :return (\$month + \$day + \$years + \$time);
-}
 :put \"\\t V4 Library loaded! (;\";"
